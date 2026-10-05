@@ -528,18 +528,20 @@ async function loadFeed(){
   var pmap=await getProfiles(posts.map(function(p){return p.user_id}));
   var results=await Promise.all([
     db.from("instrix_post_likes").select("post_id,user_id").in("post_id",ids),
-    db.from("instrix_comments").select("id,post_id").in("post_id",ids),
+    db.from("instrix_comments").select("id,post_id,user_id,body,created_at").in("post_id",ids).order("created_at",{ascending:true}),
     db.from("instrix_saved_posts").select("post_id").eq("user_id",user.id).in("post_id",ids),
     db.from("instrix_post_media").select("*").in("post_id",ids).order("position",{ascending:true})
   ]);
   var likes=results[0],comments=results[1],saved=results[2],media=results[3];
-  var lc={},liked={},cc={},sv={},mm={};
+  var lc={},liked={},cc={},sv={},mm={},cp={};
   (likes.data||[]).forEach(function(x){lc[x.post_id]=(lc[x.post_id]||0)+1;if(x.user_id===user.id)liked[x.post_id]=true});
-  (comments.data||[]).forEach(function(x){cc[x.post_id]=(cc[x.post_id]||0)+1});
+  (comments.data||[]).forEach(function(x){cc[x.post_id]=(cc[x.post_id]||0)+1;(cp[x.post_id]||(cp[x.post_id]=[])).push(x)});
   (saved.data||[]).forEach(function(x){sv[x.post_id]=true});
   (media.data||[]).forEach(function(x){(mm[x.post_id]||(mm[x.post_id]=[])).push(x)});
+  var commentProfiles=await getProfiles((comments.data||[]).map(function(x){return x.user_id}));
+  Object.keys(commentProfiles).forEach(function(k){pmap[k]=commentProfiles[k]});
   cache.likes=liked;cache.commentsCount=cc;cache.saved=sv;cache.media=mm;
-  q("#feed").innerHTML=posts.map(function(p){return postHtml(p,pmap[p.user_id],lc[p.id]||0,cc[p.id]||0,liked[p.id],sv[p.id],mm[p.id]||[])}).join("");
+  q("#feed").innerHTML=posts.map(function(p){return postHtml(p,pmap[p.user_id],lc[p.id]||0,cc[p.id]||0,liked[p.id],sv[p.id],mm[p.id]||[],cp[p.id]||[],pmap)}).join("");
   bindPosts();
   if(posts.length<5)renderHomeExternalFallback(false);
 }
@@ -556,14 +558,16 @@ function mediaHtml(p,mediaArr){
     '</div><button class="carousel-nav carousel-prev" data-carousel-prev="'+p.id+'"><i class="fa-solid fa-chevron-left"></i></button><button class="carousel-nav carousel-next" data-carousel-next="'+p.id+'"><i class="fa-solid fa-chevron-right"></i></button><div class="carousel-dots">'+
     arr.map(function(_,i){return'<span class="carousel-dot '+(i===0?"active":"")+'"></span>'}).join("")+'</div></div>'
 }
-function postHtml(p,prof,likes,comments,liked,saved,mediaArr){
+function postHtml(p,prof,likes,comments,liked,saved,mediaArr,commentPreview,profileMap){
   prof=prof||{id:p.user_id,username:"kullanici",display_name:"",avatar_url:null};
   return'<article class="post" data-post="'+p.id+'">'+
     '<div class="post-head"><img class="avatar" src="'+avatar(prof)+'" alt=""><div><div class="post-user" data-profile="'+prof.id+'>'+safe(prof.username)+(prof.is_verified?' <i class="fa-solid fa-circle-check verified"></i>':'')+'</div><div class="post-meta">'+safe(p.location||"")+'</div></div>'+
     '<button class="more" data-post-actions="'+p.id+'" data-owner="'+(p.user_id===user.id?"1":"0")+'"><i class="fa-solid fa-ellipsis"></i></button></div>'+
     '<div class="post-media">'+mediaHtml(p,mediaArr)+'</div>'+
     '<div class="post-actions"><button class="'+(liked?"liked":"")+'" data-like="'+p.id+'"><i class="'+(liked?"fa-solid":"fa-regular")+' fa-heart"></i></button><button data-comment="'+p.id+'"><i class="fa-regular fa-comment"></i></button><button data-share="'+p.id+'"><i class="fa-regular fa-paper-plane"></i></button><button class="save '+(saved?"saved":"")+'" data-save="'+p.id+'"><i class="'+(saved?"fa-solid":"fa-regular")+' fa-bookmark"></i></button></div>'+
-    '<div class="post-body"><div class="likes" data-like-count="'+p.id+'>'+fmt(likes)+' beğenme</div><div class="caption"><b>'+safe(prof.username)+'</b> '+richText(p.caption||"")+'</div><div class="comments-link" data-comment="'+p.id+'>'+comments+' yorumun tümünü gör</div><div class="time">'+ago(p.created_at)+'</div></div></article>'
+    '<div class="post-body"><div class="likes" data-like-count="'+p.id+'>'+fmt(likes)+' beğenme</div><div class="caption"><b>'+safe(prof.username)+'</b> '+richText(p.caption||"")+'</div>'+
+    ((commentPreview||[]).slice(-2).map(function(c){var cp=(profileMap&&profileMap[c.user_id])||cache.profiles[c.user_id]||{};return'<div class="caption" style="margin-top:5px"><b>'+safe(cp.username||"kullanici")+'</b> '+richText(c.body)+'</div>'}).join(""))+
+    '<div class="comments-link" data-comment="'+p.id+'>'+comments+' yorumun tümünü gör</div><div class="time">'+ago(p.created_at)+'</div></div></article>'
 }
 
 function moveCarousel(id,delta){
@@ -589,13 +593,14 @@ async function openPostDetail(postId){
   var p=r.data,prof=(await getProfiles([p.user_id]))[p.user_id]||{};
   var results=await Promise.all([
     db.from("instrix_post_likes").select("post_id,user_id").eq("post_id",postId),
-    db.from("instrix_comments").select("id").eq("post_id",postId),
+    db.from("instrix_comments").select("id,user_id,body,created_at").eq("post_id",postId).order("created_at",{ascending:true}),
     db.from("instrix_saved_posts").select("post_id").eq("user_id",user.id).eq("post_id",postId).maybeSingle(),
     db.from("instrix_post_media").select("*").eq("post_id",postId).order("position",{ascending:true})
   ]);
-  var likes=results[0].data||[],liked=likes.some(function(x){return x.user_id===user.id}),saved=!!results[2].data,media=results[3].data||[];
+  var likes=results[0].data||[],detailComments=results[1].data||[],liked=likes.some(function(x){return x.user_id===user.id}),saved=!!results[2].data,media=results[3].data||[];
+  var detailProfiles=await getProfiles(detailComments.map(function(x){return x.user_id}));detailProfiles[p.user_id]=prof;
   cache.likes[postId]=liked;cache.saved[postId]=saved;cache.media=cache.media||{};cache.media[postId]=media;
-  q("#postDetailBody").innerHTML=postHtml(p,prof,likes.length,(results[1].data||[]).length,liked,saved,media);
+  q("#postDetailBody").innerHTML=postHtml(p,prof,likes.length,detailComments.length,liked,saved,media,detailComments,detailProfiles);
   bindPosts()
 }
 async function toggleLike(postId,btn){
