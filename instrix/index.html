@@ -565,19 +565,36 @@ function bindPosts(){
   bindRichLinks();
 }
 
+async function openPostDetail(postId){
+  loading("#postDetailBody");openModal("postDetailModal");
+  var r=await db.from("instrix_posts").select("*").eq("id",postId).maybeSingle();
+  if(r.error||!r.data){empty("#postDetailBody","fa-regular fa-image","Gönderi bulunamadı","Silinmiş olabilir veya bu gönderiyi görme iznin olmayabilir.");return}
+  var p=r.data,prof=(await getProfiles([p.user_id]))[p.user_id]||{};
+  var results=await Promise.all([
+    db.from("instrix_post_likes").select("post_id,user_id").eq("post_id",postId),
+    db.from("instrix_comments").select("id").eq("post_id",postId),
+    db.from("instrix_saved_posts").select("post_id").eq("user_id",user.id).eq("post_id",postId).maybeSingle(),
+    db.from("instrix_post_media").select("*").eq("post_id",postId).order("position",{ascending:true})
+  ]);
+  var likes=results[0].data||[],liked=likes.some(function(x){return x.user_id===user.id}),saved=!!results[2].data,media=results[3].data||[];
+  cache.likes[postId]=liked;cache.saved[postId]=saved;cache.media=cache.media||{};cache.media[postId]=media;
+  q("#postDetailBody").innerHTML=postHtml(p,prof,likes.length,(results[1].data||[]).length,liked,saved,media);
+  bindPosts()
+}
 async function toggleLike(postId,btn){
   var on=!!cache.likes[postId];
   if(on){var r=await db.from("instrix_post_likes").delete().eq("post_id",postId).eq("user_id",user.id);if(r.error)return toast(r.error.message);cache.likes[postId]=false}
   else{var r2=await db.from("instrix_post_likes").insert({post_id:postId,user_id:user.id});if(r2.error)return toast(r2.error.message);cache.likes[postId]=true}
-  btn.classList.toggle("liked",!on);btn.innerHTML='<i class="'+(!on?"fa-solid":"fa-regular")+' fa-heart"></i>';
-  await loadFeed();
+  var cnt=await db.from("instrix_post_likes").select("*",{count:"exact",head:true}).eq("post_id",postId);
+  qa('[data-like="'+postId+'"]').forEach(function(b){b.classList.toggle("liked",!on);b.innerHTML='<i class="'+(!on?"fa-solid":"fa-regular")+' fa-heart"></i>'});
+  qa('[data-like-count="'+postId+'"]').forEach(function(el){el.textContent=fmt(cnt.count||0)+" beğenme"})
 }
 async function toggleSave(postId,btn){
   var on=!!cache.saved[postId];
   if(on){var r=await db.from("instrix_saved_posts").delete().eq("post_id",postId).eq("user_id",user.id);if(r.error)return toast(r.error.message);cache.saved[postId]=false;toast("Kaydedilenlerden çıkarıldı")}
   else{var r2=await db.from("instrix_saved_posts").insert({post_id:postId,user_id:user.id});if(r2.error)return toast(r2.error.message);cache.saved[postId]=true;toast("Kaydedildi")}
-  btn.classList.toggle("saved",!on);btn.innerHTML='<i class="'+(!on?"fa-solid":"fa-regular")+' fa-bookmark"></i>';
-}
+  qa('[data-save="'+postId+'"]').forEach(function(b){b.classList.toggle("saved",!on);b.innerHTML='<i class="'+(!on?"fa-solid":"fa-regular")+' fa-bookmark"></i>'});
+
 async function sharePost(id){
   var url=location.href.split("#")[0]+"#post-"+id;
   if(navigator.share){try{await navigator.share({title:"Instrix",text:"Bu gönderiye bak",url:url})}catch(e){}}
@@ -585,7 +602,7 @@ async function sharePost(id){
 }
 async function deletePost(id){
   if(!confirm("Bu gönderiyi silmek istiyor musun?"))return;
-  var r=await db.from("instrix_posts").delete().eq("id",id);if(r.error)return toast(r.error.message);toast("Gönderi silindi");if(currentView==="profile")await loadProfile(profileId,profileTab);else await loadFeed()
+  var r=await db.from("instrix_posts").delete().eq("id",id);if(r.error)return toast(r.error.message);closeModal("postDetailModal");toast("Gönderi silindi");if(currentView==="profile")await loadProfile(profileId,profileTab);else if(currentView==="home")await loadFeed()
 }
 
 async function openComments(postId){
@@ -795,7 +812,7 @@ async function loadExplore(){
   var likes=await db.from("instrix_post_likes").select("post_id").in("post_id",arr.map(function(x){return x.id}));
   var lc={};(likes.data||[]).forEach(function(x){lc[x.post_id]=(lc[x.post_id]||0)+1});
   q("#exploreGrid").innerHTML=arr.map(function(p){return'<div class="grid-item" data-open-post="'+p.id+'>'+mediaHtml(p)+'<div class="grid-hover"><span><i class="fa-solid fa-heart"></i> '+fmt(lc[p.id]||0)+'</span></div></div>'}).join("");
-  qa("[data-open-post]").forEach(function(x){x.onclick=function(){showView("home");setTimeout(function(){var el=q('[data-post="'+x.getAttribute("data-open-post")+'"]');if(el)el.scrollIntoView({behavior:"smooth",block:"center"})},350)}})
+  qa("[data-open-post]").forEach(function(x){x.onclick=function(){openPostDetail(x.getAttribute("data-open-post"))}})
 }
 qa("[data-explore-tab]").forEach(function(x){x.onclick=function(){exploreMode=x.getAttribute("data-explore-tab");loadExplore()}});
 q("#refreshExplore").onclick=loadExplore;
@@ -906,7 +923,7 @@ async function loadProfile(id,tab){
   }
   if(!posts.length){empty("#profileGrid","fa-regular fa-images",tab==="saved"?"Kaydedilen yok":"Henüz gönderi yok",tab==="saved"?"Kaydettiğin gönderiler burada görünür.":"İlk gönderi paylaşıldığında burada görünür.");return}
   q("#profileGrid").innerHTML=posts.map(function(x){return'<div class="grid-item" data-profile-post="'+x.id+'>'+mediaHtml(x)+'</div>'}).join("");
-  qa("[data-profile-post]").forEach(function(x){x.onclick=function(){showView("home");setTimeout(function(){var el=q('[data-post="'+x.getAttribute("data-profile-post")+'"]');if(el)el.scrollIntoView({behavior:"smooth",block:"center"})},350)}})
+  qa("[data-profile-post]").forEach(function(x){x.onclick=function(){openPostDetail(x.getAttribute("data-profile-post"))}})
 }
 
 qa("[data-profile-tab]").forEach(function(x){x.onclick=function(){profileTab=x.getAttribute("data-profile-tab");loadProfile(profileId,profileTab)}});
