@@ -482,7 +482,7 @@
       liked:state.liked,saved:state.saved,followed:state.followed,comments:state.comments,messages:state.messages,userPosts:userPosts,profile:state.profile
     }));
   }
-  function esc(s){ return String(s || "").replace(/[&<>"']/g,function(m){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#039;"}[m]; }); }
+  function esc(s){ return String(s || "").replace(/[&<>"']/g,function(m){ if(m==="&")return "&amp;"; if(m==="<")return "&lt;"; if(m===">")return "&gt;"; if(m==='"')return "&quot;"; return "&#039;"; }); }
   function toast(t){
     var el=$("#toast"); el.textContent=t; el.classList.add("show");
     clearTimeout(window.__toast); window.__toast=setTimeout(function(){ el.classList.remove("show"); },1800);
@@ -666,7 +666,7 @@
     var f=this.files&&this.files[0]; if(!f)return;
     var r=new FileReader(); r.onload=function(){postImageData=r.result;$("#postPreview").innerHTML='<img src="'+postImageData+'" alt="">';};r.readAsDataURL(f);
   });
-  $("#postUrl").addEventListener("input",function(){var u=this.value.trim();if(u)$("#postPreview").innerHTML='<img src="'+esc(u)+'" alt="" onerror="this.parentNode.innerHTML=\\'<span>Görsel yüklenemedi</span>\\'">';});
+  $("#postUrl").addEventListener("input",function(){var u=this.value.trim();if(u)$("#postPreview").innerHTML='<img src="'+esc(u)+'" alt="">';});
   $("#sharePostBtn").onclick=function(){
     var img=postImageData||$("#postUrl").value.trim(); if(!img){toast("Önce bir fotoğraf seç");return;}
     var cap=$("#postCaption").value.trim()||"new post ✦";
