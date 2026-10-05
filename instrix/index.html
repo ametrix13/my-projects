@@ -216,8 +216,9 @@ linear-gradient(135deg,#10101a,#07070b)}
         <div id="exploreInternal"><div id="exploreGrid" class="grid"></div></div>
         <div id="exploreExternal" class="hidden">
           <div class="external-add">
-            <input id="externalUrlInput" placeholder="Public Instagram Reel/post veya TikTok bağlantısı yapıştır">
+            <input id="externalUrlInput" placeholder="Public Instagram Reel/post veya TikTok video/profil bağlantısı yapıştır">
             <button id="addExternalBtn" class="primary">Ekle</button>
+            <button id="syncExternalBtn" class="secondary" title="Bağlı resmi API kaynaklarını yenile"><i class="fa-solid fa-arrows-rotate"></i></button>
           </div>
           <div class="tiny" style="margin:0 0 14px 4px">İçerik kopyalanmaz; kaynak platformun kendi oynatıcısı kullanılır.</div>
           <div id="externalFeed" class="external-feed"></div>
@@ -385,7 +386,7 @@ var session=null,user=null,me=null;
 var currentView="home",feedMode="foryou",profileId=null,profileTab="posts",exploreMode="instrix";
 var currentCommentPost=null,currentReplyTo=null,currentConversation=null,messageChannel=null,notifChannel=null;
 var composerType="post";
-var storyTimer=null,storyTick=null,storyKeyHandler=null,storyTouchStartX=0;
+var storyTimer=null,storyTick=null,storyKeyHandler=null,storyTouchStartX=0,externalSyncAttempted=false;
 var cache={profiles:{},posts:[],likes:{},commentsCount:{},saved:{}};
 
 function q(s){return document.querySelector(s)}
@@ -856,7 +857,23 @@ function refreshTikTokEmbeds(){
   var old=q("#instrixTikTokEmbedScript");if(old)old.remove();
   var sc=document.createElement("script");sc.id="instrixTikTokEmbedScript";sc.async=true;sc.src="https://www.tiktok.com/embed.js";document.body.appendChild(sc)
 }
+async function syncExternalProviders(showMessage){
+  try{
+    var res=await db.functions.invoke("instrix-external-sync",{body:{}});
+    externalSyncAttempted=true;
+    if(res.error){if(showMessage)toast("Otomatik kaynak yenilenemedi.");return null}
+    var data=res.data||{},ig=data.instagram||{},tt=data.tiktok||{};
+    if(showMessage){
+      var added=(ig.added||0)+(tt.added||0);
+      if(added)toast(added+" dış içerik yenilendi");
+      else if(!ig.configured&&!tt.configured)toast("API bağlantısı yok; public creator fallback kullanılıyor");
+      else toast("Dış içerikler zaten güncel")
+    }
+    return data
+  }catch(e){externalSyncAttempted=true;if(showMessage)toast("Otomatik yenileme kullanılamadı");return null}
+}
 async function renderHomeExternalFallback(emptyMode){
+  if(!externalSyncAttempted)await syncExternalProviders(false);
   var r=await db.from("instrix_external_posts").select("*").order("is_featured",{ascending:false}).order("created_at",{ascending:false}).limit(4);
   var arr=r.data||[];
   if(!arr.length){
@@ -868,6 +885,7 @@ async function renderHomeExternalFallback(emptyMode){
 }
 async function loadExternalFeed(){
   loading("#externalFeed");
+  if(!externalSyncAttempted)await syncExternalProviders(false);
   var r=await db.from("instrix_external_posts").select("*").order("is_featured",{ascending:false}).order("created_at",{ascending:false}).limit(30);
   if(r.error){empty("#externalFeed","fa-solid fa-triangle-exclamation","Dış içerik yüklenemedi",r.error.message);return}
   var arr=r.data||[];
@@ -879,6 +897,7 @@ async function loadExternalFeed(){
   qa("[data-delete-external]").forEach(function(b){b.onclick=async function(){var d=await db.from("instrix_external_posts").delete().eq("id",b.getAttribute("data-delete-external"));if(d.error)return toast(d.error.message);loadExternalFeed()}});
   setTimeout(refreshTikTokEmbeds,80)
 }
+q("#syncExternalBtn").onclick=async function(){await syncExternalProviders(true);await loadExternalFeed()};
 q("#addExternalBtn").onclick=async function(){
   var parsed=parseExternalUrl(q("#externalUrlInput").value);
   if(!parsed)return toast("Geçerli public Instagram Reel/post veya TikTok video/profil linki yapıştır.");
