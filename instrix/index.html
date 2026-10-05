@@ -109,7 +109,7 @@ linear-gradient(135deg,#10101a,#07070b)}
 .private-box{padding:55px 18px;text-align:center;color:var(--muted)}.private-box i{font-size:40px;color:#ddd;margin-bottom:12px}.private-box h3{color:white;margin:0 0 8px}
 .profile-actions{display:flex;gap:8px;flex-wrap:wrap}.mini-danger{border:1px solid #5b2838;background:#221218;color:#ff8aaa;border-radius:12px;padding:9px 11px;font-weight:850;cursor:pointer}
 .action-list{display:grid;gap:8px}.action-list button{border:1px solid var(--line);background:var(--panel2);padding:13px;border-radius:14px;text-align:left;font-weight:850;cursor:pointer}.action-list button.danger{color:#ff86a8;border-color:#512636}
-.typing-line{font-size:11px;color:#a88dff;min-height:14px}.seen{font-size:9px;opacity:.65;text-align:right;margin-top:3px}
+.typing-line{font-size:11px;color:#a88dff;min-height:14px}.seen{font-size:9px;opacity:.65;text-align:right;margin-top:3px}.story-reply-card{border:1px solid #363636;border-radius:12px;overflow:hidden;margin-bottom:7px;background:#111}.story-reply-preview{display:flex;align-items:center;gap:9px;padding:8px}.story-reply-thumb{width:52px;height:68px;border-radius:8px;object-fit:cover;background:#222;flex:0 0 auto}.story-reply-meta{min-width:0}.story-reply-meta b{display:block;font-size:12px}.story-reply-meta span{display:block;font-size:11px;color:#a8a8a8;margin-top:2px}.story-reply-text{padding:0 9px 9px;font-size:13px;line-height:1.35}
 .group-box{display:grid;gap:12px}.check-row{display:flex;align-items:center;gap:9px;color:#cfcfdb;font-size:13px}.check-row input{width:18px;height:18px}
 .external-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
 .story-viewers-btn{position:absolute;left:16px;bottom:68px;border:1px solid rgba(255,255,255,.28);background:rgba(0,0,0,.3);color:#fff;border-radius:999px;padding:8px 12px;font-size:11px;font-weight:850;cursor:pointer;z-index:7}
@@ -1028,22 +1028,41 @@ function bindPosts(){
 }
 
 async function openPostDetail(postId){
+  postId=String(postId||"").trim();
   loading("#postDetailBody");openModal("postDetailModal");
-  var r=await db.from("instrix_posts").select("*").eq("id",postId).maybeSingle();
-  if(r.error||!r.data){empty("#postDetailBody","fa-regular fa-image","Gönderi bulunamadı","Silinmiş olabilir veya bu gönderiyi görme iznin olmayabilir.");return}
-  var p=r.data,prof=(await getProfiles([p.user_id]))[p.user_id]||{};
+  var cachedPost=(cache.postById&&cache.postById[postId])||(cache.posts||[]).find(function(x){return String(x.id)===postId})||null;
+  var p=cachedPost;
+
+  if(!p){
+    var r=await db.from("instrix_posts").select("*").eq("id",postId).limit(1);
+    if(r.error){
+      console.error("Post detail query failed",r.error);
+      empty("#postDetailBody","fa-solid fa-triangle-exclamation","Gönderi yüklenemedi",r.error.message);
+      return
+    }
+    p=(r.data||[])[0]||null
+  }
+
+  if(!p){
+    empty("#postDetailBody","fa-regular fa-image","Gönderi bulunamadı","Gönderi silinmiş olabilir.");
+    return
+  }
+
+  cache.postById=cache.postById||{};cache.postById[String(p.id)]=p;
+  var prof=(await getProfiles([p.user_id]))[p.user_id]||cache.profiles[p.user_id]||{};
   var results=await Promise.all([
-    db.from("instrix_post_likes").select("post_id,user_id").eq("post_id",postId),
-    db.from("instrix_comments").select("id,user_id,body,created_at").eq("post_id",postId).order("created_at",{ascending:true}),
-    db.from("instrix_saved_posts").select("post_id").eq("user_id",user.id).eq("post_id",postId).maybeSingle(),
-    db.from("instrix_post_media").select("*").eq("post_id",postId).order("position",{ascending:true})
+    db.from("instrix_post_likes").select("post_id,user_id").eq("post_id",p.id),
+    db.from("instrix_comments").select("id,user_id,body,created_at").eq("post_id",p.id).order("created_at",{ascending:true}),
+    db.from("instrix_saved_posts").select("post_id").eq("user_id",user.id).eq("post_id",p.id).limit(1),
+    db.from("instrix_post_media").select("*").eq("post_id",p.id).order("position",{ascending:true})
   ]);
-  var likes=results[0].data||[],detailComments=results[1].data||[],liked=likes.some(function(x){return x.user_id===user.id}),saved=!!results[2].data,media=results[3].data||[];
+  var likes=results[0].data||[],detailComments=results[1].data||[],liked=likes.some(function(x){return x.user_id===user.id}),saved=!!((results[2].data||[])[0]),media=results[3].data||[];
   var detailProfiles=await getProfiles(detailComments.map(function(x){return x.user_id}));detailProfiles[p.user_id]=prof;
-  cache.likes[postId]=liked;cache.saved[postId]=saved;cache.media=cache.media||{};cache.media[postId]=media;
+  cache.likes[p.id]=liked;cache.saved[p.id]=saved;cache.media=cache.media||{};cache.media[p.id]=media;
   q("#postDetailBody").innerHTML=postHtml(p,prof,likes.length,detailComments.length,liked,saved,media,detailComments,detailProfiles);
   bindPosts()
 }
+
 async function toggleLike(postId,btn){
   var on=!!cache.likes[postId];
   if(on){var r=await db.from("instrix_post_likes").delete().eq("post_id",postId).eq("user_id",user.id);if(r.error)return toast(r.error.message);cache.likes[postId]=false}
@@ -1198,7 +1217,19 @@ async function openStorySet(arr,prof,startIndex){
       if(e.key==="Enter"){
         e.preventDefault();var t=this.value.trim();if(!t)return;
         var c=await startConversation(prof.id,false);
-        if(c){await db.from("instrix_messages").insert({conversation_id:c.id,sender_id:user.id,body:t});toast("Hikâyeye cevap gönderildi");this.value=""}
+        if(c){
+          var sr=await db.from("instrix_messages").insert({
+            conversation_id:c.id,
+            sender_id:user.id,
+            body:t,
+            message_type:"story_reply",
+            story_id:st.id,
+            story_media_url:st.media_url,
+            story_media_type:st.media_type
+          });
+          if(sr.error)return toast("Hikâye yanıtı gönderilemedi: "+sr.error.message);
+          toast("Hikâyeye yanıt gönderildi");this.value=""
+        }
       }
     });
 
@@ -1444,6 +1475,8 @@ async function loadProfile(id,tab){
   if(postError){empty("#profileGrid","fa-solid fa-triangle-exclamation","Gönderiler yüklenemedi",postError.message);return}
   if(!posts.length){empty("#profileGrid","fa-regular fa-images",tab==="saved"?"Kaydedilen yok":"Henüz gönderi yok",tab==="saved"?"Kaydettiğin gönderiler burada görünür.":"İlk gönderi paylaşıldığında burada görünür.");return}
 
+  cache.postById=cache.postById||{};
+  posts.forEach(function(x){cache.postById[String(x.id)]=x});
   var mediaRes=await db.from("instrix_post_media").select("*").in("post_id",posts.map(function(x){return x.id})).order("position",{ascending:true});
   var mediaMap={};(mediaRes.data||[]).forEach(function(m){(mediaMap[m.post_id]||(mediaMap[m.post_id]=[])).push(m)});
   q("#profileGrid").innerHTML=posts.map(function(x){
@@ -1627,7 +1660,14 @@ async function loadMessages(){
     var mine=m.sender_id===user.id,sp=pmap[m.sender_id]||{};
     var author=!mine&&isGroup?'<div class="msg-author">@'+safe(sp.username||"kullanici")+'</div>':'';
     var seen=mine&&m.id===lastOwn&&reads[m.id]?'<div class="seen">Görüldü'+(reads[m.id]>1?" · "+reads[m.id]:"")+'</div>':'';
-    return'<div class="msg-line '+(mine?"me":"them")+'">'+(!mine?'<img class="msg-avatar" src="'+avatar(sp)+'" alt="">':'')+'<div class="msg-wrap">'+author+'<div class="msg '+(mine?"me":"them")+'">'+richText(m.body)+(m.media_url?'<div><a href="'+safe(m.media_url)+'" target="_blank" rel="noopener">Medya</a></div>':'')+'<div class="msg-time">'+ago(m.created_at)+'</div></div>'+seen+'</div></div>'
+    var content="";
+    if(m.message_type==="story_reply"){
+      var preview=m.story_media_url?(m.story_media_type==="video"?'<video class="story-reply-thumb" src="'+safe(m.story_media_url)+'" muted playsinline preload="metadata"></video>':'<img class="story-reply-thumb" src="'+safe(m.story_media_url)+'" alt="">'):'';
+      content='<div class="story-reply-card"><div class="story-reply-preview">'+preview+'<div class="story-reply-meta"><b>Hikâyeye yanıt</b><span>'+(mine?"Bir hikâyeye yanıt verdin":"Hikâyene yanıt verdi")+'</span></div></div><div class="story-reply-text">'+richText(m.body)+'</div></div>'
+    }else{
+      content='<div class="msg '+(mine?"me":"them")+'">'+richText(m.body)+(m.media_url?'<div><a href="'+safe(m.media_url)+'" target="_blank" rel="noopener">Medya</a></div>':'')+'<div class="msg-time">'+ago(m.created_at)+'</div></div>'
+    }
+    return'<div class="msg-line '+(mine?"me":"them")+'">'+(!mine?'<img class="msg-avatar" src="'+avatar(sp)+'" alt="">':'')+'<div class="msg-wrap">'+author+content+(m.message_type==="story_reply"?'<div class="msg-time">'+ago(m.created_at)+'</div>':'')+seen+'</div></div>'
   }).join("");
   q("#chatMessages").scrollTop=q("#chatMessages").scrollHeight;bindRichLinks()
 }
@@ -1728,7 +1768,10 @@ async function loadNotifications(){
     if(n.kind==="like")return"gönderini beğendi.";
     if(n.kind==="comment")return"yorum yaptı: "+(n.text||"");
     if(n.kind==="follow")return"seni takip etmeye başladı.";
-    if(n.kind==="message")return"sana mesaj gönderdi: "+(n.text||"");
+    if(n.kind==="message"){
+      if((n.text||"").indexOf("hikâyene yanıt verdi")===0)return n.text;
+      return"sana mesaj gönderdi: "+(n.text||"");
+    }
     if(n.kind==="follow_request")return"seni takip etmek istiyor.";
     if(n.kind==="follow_accept")return"takip isteğini kabul etti.";
     if(n.kind==="mention")return n.text||"senden bahsetti.";
