@@ -891,37 +891,80 @@ q("#publishBtn").onclick=async function(){
 
 async function loadConversations(){
   loading("#chatList");
-  var r=await db.from("instrix_conversations").select("*").or("user_a.eq."+user.id+",user_b.eq."+user.id).order("updated_at",{ascending:false});
-  var convs=r.data||[];if(!convs.length){empty("#chatList","fa-regular fa-paper-plane","Mesaj kutun boş","Yeni mesaj düğmesinden birini bulup konuşmaya başla.");q("#chatTop").innerHTML="";q("#chatMessages").innerHTML="";return}
-  var otherIds=convs.map(function(c){return c.user_a===user.id?c.user_b:c.user_a}),pmap=await getProfiles(otherIds);
-  var mr=await db.from("instrix_messages").select("*").in("conversation_id",convs.map(function(c){return c.id})).order("created_at",{ascending:false}).limit(200);
+  var mem=await db.from("instrix_conversation_members").select("conversation_id").eq("user_id",user.id);
+  var ids=(mem.data||[]).map(function(x){return x.conversation_id});
+  if(!ids.length){empty("#chatList","fa-regular fa-paper-plane","Mesaj kutun boş","Yeni mesaj düğmesinden birini bulup konuşmaya başla.");q("#chatTop").innerHTML="";q("#chatMessages").innerHTML="";return}
+  var r=await db.from("instrix_conversations").select("*").in("id",ids).order("updated_at",{ascending:false});
+  var convs=r.data||[];if(!convs.length){empty("#chatList","fa-regular fa-paper-plane","Mesaj kutun boş","Yeni bir konuşma başlat.");return}
+  var allm=await db.from("instrix_conversation_members").select("*").in("conversation_id",convs.map(function(c){return c.id}));
+  var membersBy={};(allm.data||[]).forEach(function(m){(membersBy[m.conversation_id]||(membersBy[m.conversation_id]=[])).push(m.user_id)});
+  var profileIds=[];Object.keys(membersBy).forEach(function(k){profileIds=profileIds.concat(membersBy[k])});var pmap=await getProfiles(profileIds);
+  var mr=await db.from("instrix_messages").select("*").in("conversation_id",convs.map(function(c){return c.id})).order("created_at",{ascending:false}).limit(300);
   var last={};(mr.data||[]).forEach(function(m){if(!last[m.conversation_id])last[m.conversation_id]=m});
-  q("#chatList").innerHTML=convs.map(function(c){var oid=c.user_a===user.id?c.user_b:c.user_a,p=pmap[oid]||{},m=last[c.id];return'<div class="chat-row '+(currentConversation===c.id?"active":"")+'" data-conv="'+c.id+'"><img class="avatar" src="'+avatar(p)+'" alt=""><div class="row-copy"><b>'+safe(p.username||"kullanici")+'</b><span>'+safe(m?m.body:"Yeni konuşma")+'</span></div></div>'}).join("");
+  q("#chatList").innerHTML=convs.map(function(c){
+    var mids=membersBy[c.id]||[],other=mids.find(function(x){return x!==user.id}),p=pmap[other]||{},m=last[c.id],group=c.conversation_type==="group";
+    var name=group?(c.title||"Grup"):safe(p.username||"kullanici");
+    var av=group?avatar({username:c.title||"group"}):avatar(p);
+    return'<div class="chat-row '+(currentConversation===c.id?"active":"")+'" data-conv="'+c.id+'"><img class="avatar" src="'+av+'" alt=""><div class="row-copy"><b>'+safe(name)+'</b><span>'+safe(m?m.body:(group?mids.length+" üye":"Yeni konuşma"))+'</span></div></div>'
+  }).join("");
   qa("[data-conv]").forEach(function(x){x.onclick=function(){openConversation(x.getAttribute("data-conv"))}});
-  if(currentConversation)await openConversation(currentConversation);else if(convs[0])await openConversation(convs[0].id)
+  if(currentConversation&&ids.indexOf(currentConversation)>=0)await openConversation(currentConversation);else if(convs[0])await openConversation(convs[0].id)
 }
 async function openConversation(id){
   currentConversation=id;q("#dmWrap").classList.add("chat-open");
-  var c=await db.from("instrix_conversations").select("*").eq("id",id).single();if(c.error)return;
-  var oid=c.data.user_a===user.id?c.data.user_b:c.data.user_a,p=(await getProfiles([oid]))[oid]||{};
-  q("#chatTop").innerHTML='<button id="chatBack" class="icon-btn chat-back" style="display:none;width:36px;height:36px"><i class="fa-solid fa-arrow-left"></i></button><img class="avatar" src="'+avatar(p)+'" alt=""><div><b data-profile="'+oid+'>'+safe(p.username||"kullanici")+'</b><div class="tiny">'+safe(p.display_name||"")+'</div></div>';
+  var c=await db.from("instrix_conversations").select("*").eq("id",id).single();if(c.error)return toast(c.error.message);
+  var mm=await db.from("instrix_conversation_members").select("*").eq("conversation_id",id);
+  var mids=(mm.data||[]).map(function(x){return x.user_id}),pmap=await getProfiles(mids);
+  var group=c.data.conversation_type==="group",other=mids.find(function(x){return x!==user.id}),p=pmap[other]||{};
+  var name=group?(c.data.title||"Grup"):safe(p.username||"kullanici"),sub=group?(mids.length+" üye"):safe(p.display_name||"");
+  q("#chatTop").innerHTML='<button id="chatBack" class="icon-btn chat-back" style="display:none;width:36px;height:36px"><i class="fa-solid fa-arrow-left"></i></button><img class="avatar" src="'+(group?avatar({username:c.data.title||"group"}):avatar(p))+'" alt=""><div><b '+(!group?'data-profile="'+other+'"':'')+'>'+safe(name)+'</b><div class="tiny">'+sub+'</div><div id="typingText" class="typing-line"></div></div>';
   if(q("#chatBack"))q("#chatBack").onclick=function(){q("#dmWrap").classList.remove("chat-open")};bindProfileLinksAndFollows();
-  await loadMessages();
+  await loadMessages();await renderTyping();
   if(messageChannel)await db.removeChannel(messageChannel);
-  messageChannel=db.channel("instrix-chat-"+id).on("postgres_changes",{event:"INSERT",schema:"public",table:"instrix_messages",filter:"conversation_id=eq."+id},function(){loadMessages();loadConversations()}).subscribe()
+  messageChannel=db.channel("instrix-chat-"+id)
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"instrix_messages",filter:"conversation_id=eq."+id},function(){loadMessages();loadConversations()})
+    .on("postgres_changes",{event:"*",schema:"public",table:"instrix_message_reads"},function(){loadMessages()})
+    .on("postgres_changes",{event:"*",schema:"public",table:"instrix_typing",filter:"conversation_id=eq."+id},function(){renderTyping()})
+    .subscribe()
 }
 async function loadMessages(){
   if(!currentConversation)return;
   var r=await db.from("instrix_messages").select("*").eq("conversation_id",currentConversation).order("created_at",{ascending:true}).limit(300);
   if(r.error){empty("#chatMessages","fa-solid fa-triangle-exclamation","Mesajlar yüklenemedi",r.error.message);return}
-  q("#chatMessages").innerHTML=(r.data||[]).map(function(m){return'<div class="msg '+(m.sender_id===user.id?"me":"them")+'>'+safe(m.body)+(m.media_url?'<div><a href="'+safe(m.media_url)+'" target="_blank">Medya</a></div>':'')+'<div class="msg-time">'+ago(m.created_at)+'</div></div>'}).join("");
-  q("#chatMessages").scrollTop=q("#chatMessages").scrollHeight
+  var arr=r.data||[];
+  var unread=arr.filter(function(m){return m.sender_id!==user.id}).map(function(m){return{message_id:m.id,user_id:user.id,read_at:new Date().toISOString()}});
+  if(unread.length)await db.from("instrix_message_reads").upsert(unread,{onConflict:"message_id,user_id"});
+  var reads={};
+  if(arr.length){
+    var rr=await db.from("instrix_message_reads").select("*").in("message_id",arr.map(function(m){return m.id}));
+    (rr.data||[]).forEach(function(x){if(x.user_id!==user.id)reads[x.message_id]=(reads[x.message_id]||0)+1})
+  }
+  q("#chatMessages").innerHTML=arr.map(function(m){
+    return'<div class="msg '+(m.sender_id===user.id?"me":"them")+'>'+richText(m.body)+(m.media_url?'<div><a href="'+safe(m.media_url)+'" target="_blank">Medya</a></div>':'')+'<div class="msg-time">'+ago(m.created_at)+'</div>'+(m.sender_id===user.id&&reads[m.id]?'<div class="seen">Görüldü'+(reads[m.id]>1?" · "+reads[m.id]:"")+'</div>':'')+'</div>'
+  }).join("");
+  q("#chatMessages").scrollTop=q("#chatMessages").scrollHeight;bindRichLinks()
+}
+async function renderTyping(){
+  if(!currentConversation||!q("#typingText"))return;
+  var cutoff=new Date(Date.now()-5000).toISOString();
+  var r=await db.from("instrix_typing").select("*").eq("conversation_id",currentConversation).neq("user_id",user.id).gt("updated_at",cutoff);
+  var arr=r.data||[];if(!arr.length){q("#typingText").textContent="";return}
+  var pmap=await getProfiles(arr.map(function(x){return x.user_id}));
+  q("#typingText").textContent=arr.map(function(x){return"@"+((pmap[x.user_id]||{}).username||"biri")}).join(", ")+" yazıyor..."
+}
+async function setTyping(){
+  if(!currentConversation)return;
+  await db.from("instrix_typing").upsert({conversation_id:currentConversation,user_id:user.id,updated_at:new Date().toISOString()},{onConflict:"conversation_id,user_id"});
+  clearTimeout(window.__typingStop);window.__typingStop=setTimeout(function(){db.from("instrix_typing").delete().eq("conversation_id",currentConversation).eq("user_id",user.id)},1800)
 }
 async function sendMessage(){
   var body=q("#messageInput").value.trim();if(!body||!currentConversation)return;
-  var r=await db.from("instrix_messages").insert({conversation_id:currentConversation,sender_id:user.id,body:body});if(r.error)return toast(r.error.message);q("#messageInput").value="";await loadMessages()
+  var r=await db.from("instrix_messages").insert({conversation_id:currentConversation,sender_id:user.id,body:body});if(r.error)return toast(r.error.message);
+  q("#messageInput").value="";await db.from("instrix_typing").delete().eq("conversation_id",currentConversation).eq("user_id",user.id);await loadMessages()
 }
-q("#sendMessageBtn").onclick=sendMessage;q("#messageInput").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage()}});
+q("#sendMessageBtn").onclick=sendMessage;
+q("#messageInput").addEventListener("input",setTyping);
+q("#messageInput").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage()}});
 
 q("#newDmBtn").onclick=function(){q("#dmSearchInput").value="";q("#dmSearchResults").innerHTML="";openModal("newDmModal");searchDm("")};
 q("#dmSearchInput").addEventListener("input",function(){searchDm(this.value)});
@@ -933,15 +976,31 @@ async function searchDm(t){
 }
 async function startConversation(otherId,navigate){
   if(otherId===user.id)return null;
-  var r=await db.from("instrix_conversations").select("*").or("and(user_a.eq."+user.id+",user_b.eq."+otherId+"),and(user_a.eq."+otherId+",user_b.eq."+user.id+")").maybeSingle();
+  var r=await db.from("instrix_conversations").select("*").or("and(user_a.eq."+user.id+",user_b.eq."+otherId+"),and(user_a.eq."+otherId+",user_b.eq."+user.id+")").eq("conversation_type","direct").maybeSingle();
   if(r.data){if(navigate!==false){currentConversation=r.data.id;await showView("dm");await openConversation(r.data.id)}return r.data}
-  var ins=await db.from("instrix_conversations").insert({user_a:user.id,user_b:otherId}).select().single();
+  var cid=crypto.randomUUID(),payload={id:cid,user_a:user.id,user_b:otherId,conversation_type:"direct",created_by:user.id};
+  var ins=await db.from("instrix_conversations").insert(payload);
   if(ins.error){
-    var retry=await db.from("instrix_conversations").select("*").or("and(user_a.eq."+user.id+",user_b.eq."+otherId+"),and(user_a.eq."+otherId+",user_b.eq."+user.id+")").maybeSingle();
+    var retry=await db.from("instrix_conversations").select("*").or("and(user_a.eq."+user.id+",user_b.eq."+otherId+"),and(user_a.eq."+otherId+",user_b.eq."+user.id+")").eq("conversation_type","direct").maybeSingle();
     if(retry.data)return retry.data;toast(ins.error.message);return null
   }
-  if(navigate!==false){currentConversation=ins.data.id;await showView("dm");await openConversation(ins.data.id)}return ins.data
+  var conv=Object.assign({created_at:new Date().toISOString()},payload);
+  if(navigate!==false){currentConversation=cid;await showView("dm");await openConversation(cid)}return conv
 }
+q("#newGroupBtn").onclick=function(){closeModal("newDmModal");q("#groupTitle").value="";q("#groupUsers").value="";openModal("groupDmModal")};
+q("#createGroupBtn").onclick=async function(){
+  var title=q("#groupTitle").value.trim(),names=Array.from(new Set(q("#groupUsers").value.split(",").map(function(x){return x.trim().toLowerCase()}).filter(Boolean)));
+  if(!title)return toast("Grup adı yaz.");if(!names.length)return toast("En az bir kullanıcı adı ekle.");
+  var people=await db.from("instrix_profiles").select("*").in("username",names);
+  var arr=people.data||[],found=arr.map(function(x){return x.username}),missing=names.filter(function(x){return found.indexOf(x)<0});
+  if(missing.length)return toast("Bulunamadı: "+missing.join(", "));
+  var cid=crypto.randomUUID();
+  var ins=await db.from("instrix_conversations").insert({id:cid,conversation_type:"group",title:title,created_by:user.id,user_a:null,user_b:null});
+  if(ins.error)return toast(ins.error.message);
+  var rows=arr.filter(function(x){return x.id!==user.id}).map(function(x){return{conversation_id:cid,user_id:x.id,role:"member"}});
+  if(rows.length){var add=await db.from("instrix_conversation_members").insert(rows);if(add.error)return toast(add.error.message)}
+  closeModal("groupDmModal");currentConversation=cid;toast("Grup oluşturuldu");await showView("dm");await openConversation(cid)
+};
 
 async function loadNotifications(){
   loading("#notificationsList");
