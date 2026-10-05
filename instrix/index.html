@@ -1006,9 +1006,32 @@ async function loadNotifications(){
   loading("#notificationsList");
   var r=await db.from("instrix_notifications").select("*").eq("recipient_id",user.id).order("created_at",{ascending:false}).limit(100);
   var arr=r.data||[],pmap=await getProfiles(arr.map(function(n){return n.actor_id}));
-  if(!arr.length){empty("#notificationsList","fa-regular fa-heart","Henüz bildirim yok","Beğeni, yorum, takip ve mesaj bildirimleri burada görünür.");updateNotifBadge(0);return}
-  q("#notificationsList").innerHTML=arr.map(function(n){var p=pmap[n.actor_id]||{},txt=n.kind==="like"?"gönderini beğendi.":n.kind==="comment"?"yorum yaptı: "+(n.text||""):n.kind==="follow"?"seni takip etmeye başladı.":"sana mesaj gönderdi: "+(n.text||"");return'<div class="notif-row '+(!n.is_read?"unread":"")+'"><img class="avatar" src="'+avatar(p)+'" alt=""><div class="row-copy"><div><b data-profile="'+(p.id||"")+'>'+safe(p.username||"Instrix")+'</b> '+safe(txt)+'</div><span>'+ago(n.created_at)+'</span></div></div>'}).join("");
+  if(!arr.length){empty("#notificationsList","fa-regular fa-heart","Henüz bildirim yok","Beğeni, yorum, takip, mention ve mesaj bildirimleri burada görünür.");updateNotifBadge(0);return}
+  function notifText(n){
+    if(n.kind==="like")return"gönderini beğendi.";
+    if(n.kind==="comment")return"yorum yaptı: "+(n.text||"");
+    if(n.kind==="follow")return"seni takip etmeye başladı.";
+    if(n.kind==="message")return"sana mesaj gönderdi: "+(n.text||"");
+    if(n.kind==="follow_request")return"seni takip etmek istiyor.";
+    if(n.kind==="follow_accept")return"takip isteğini kabul etti.";
+    if(n.kind==="mention")return n.text||"senden bahsetti.";
+    if(n.kind==="reply")return"yorumuna yanıt verdi: "+(n.text||"");
+    if(n.kind==="comment_like")return"yorumunu beğendi.";
+    return n.text||"yeni bir etkileşim gönderdi."
+  }
+  q("#notificationsList").innerHTML=arr.map(function(n){
+    var p=pmap[n.actor_id]||{},actions=n.kind==="follow_request"?'<div style="display:flex;gap:7px;margin-top:7px"><button class="primary" style="padding:7px 10px" data-follow-accept="'+n.actor_id+'">Kabul et</button><button class="secondary" style="padding:7px 10px" data-follow-reject="'+n.actor_id+'">Sil</button></div>':'';
+    return'<div class="notif-row '+(!n.is_read?"unread":"")+'"><img class="avatar" src="'+avatar(p)+'" alt=""><div class="row-copy"><div><b data-profile="'+(p.id||"")+'>'+safe(p.username||"Instrix")+'</b> '+safe(notifText(n))+'</div><span>'+ago(n.created_at)+'</span>'+actions+'</div></div>'
+  }).join("");
+  qa("[data-follow-accept]").forEach(function(b){b.onclick=function(){respondFollowRequest(b.getAttribute("data-follow-accept"),true)}});
+  qa("[data-follow-reject]").forEach(function(b){b.onclick=function(){respondFollowRequest(b.getAttribute("data-follow-reject"),false)}});
   bindProfileLinksAndFollows();updateNotifBadge(arr.filter(function(n){return!n.is_read}).length)
+}
+async function respondFollowRequest(requester,accept){
+  var rr=await db.from("instrix_follow_requests").select("*").eq("requester_id",requester).eq("target_id",user.id).eq("status","pending").maybeSingle();
+  if(!rr.data)return toast("Takip isteği artık aktif değil.");
+  var up=await db.from("instrix_follow_requests").update({status:accept?"accepted":"rejected"}).eq("id",rr.data.id);
+  if(up.error)return toast(up.error.message);toast(accept?"Takip isteği kabul edildi":"Takip isteği silindi");await loadNotifications()
 }
 q("#markReadBtn").onclick=async function(){await db.from("instrix_notifications").update({is_read:true}).eq("recipient_id",user.id).eq("is_read",false);await loadNotifications();toast("Bildirimler okundu")};
 function updateNotifBadge(n){var b=q("#notifBadge");b.textContent=String(n);b.classList.toggle("hidden",!n)}
@@ -1016,6 +1039,59 @@ async function subscribeNotifications(){
   var cnt=await db.from("instrix_notifications").select("*",{count:"exact",head:true}).eq("recipient_id",user.id).eq("is_read",false);updateNotifBadge(cnt.count||0);
   if(notifChannel)await db.removeChannel(notifChannel);
   notifChannel=db.channel("instrix-notif-"+user.id).on("postgres_changes",{event:"INSERT",schema:"public",table:"instrix_notifications",filter:"recipient_id=eq."+user.id},function(){db.from("instrix_notifications").select("*",{count:"exact",head:true}).eq("recipient_id",user.id).eq("is_read",false).then(function(x){updateNotifBadge(x.count||0)});if(currentView==="notifications")loadNotifications()}).subscribe()
+}
+
+function richText(text){
+  var out=safe(text||"");
+  out=out.replace(/(^|[\s>])@([a-zA-Z0-9._]{3,30})/g,'$1<span class="link-btn" data-mention="$2">@$2</span>');
+  out=out.replace(/(^|[\s>])#([a-zA-Z0-9_ğüşöçıİĞÜŞÖÇ]{2,50})/g,'$1<span class="link-btn" data-hashtag="$2">#$2</span>');
+  return out
+}
+function bindRichLinks(){
+  qa("[data-mention]").forEach(function(x){x.onclick=async function(e){e.stopPropagation();var u=x.getAttribute("data-mention").toLowerCase();var r=await db.from("instrix_profiles").select("*").eq("username",u).maybeSingle();if(r.data){profileId=r.data.id;profileTab="posts";showView("profile")}else toast("Kullanıcı bulunamadı")}});
+  qa("[data-hashtag]").forEach(function(x){x.onclick=function(e){e.stopPropagation();openHashtag(x.getAttribute("data-hashtag"))}})
+}
+async function openHashtag(tag){
+  exploreMode="instrix";await showView("explore");q("#exploreTitle").textContent="#"+tag;
+  var r=await db.from("instrix_posts").select("*").ilike("caption","%#"+tag+"%").order("created_at",{ascending:false}).limit(80);
+  var arr=r.data||[];
+  if(!arr.length){empty("#exploreGrid","fa-solid fa-hashtag","Gönderi bulunamadı","#"+tag+" etiketiyle henüz paylaşım yok.");return}
+  q("#exploreGrid").innerHTML=arr.map(function(p){return'<div class="grid-item" data-open-post="'+p.id+'>'+mediaHtml(p)+'</div>'}).join("");
+  qa("[data-open-post]").forEach(function(x){x.onclick=function(){showView("home");setTimeout(function(){var el=q('[data-post="'+x.getAttribute("data-open-post")+'"]');if(el)el.scrollIntoView({behavior:"smooth",block:"center"})},350)}})
+}
+async function showStoryViewers(storyId){
+  var r=await db.from("instrix_story_views").select("*").eq("story_id",storyId).order("viewed_at",{ascending:false});
+  var arr=r.data||[],pmap=await getProfiles(arr.map(function(x){return x.viewer_id}));
+  q("#listModalTitle").textContent="Görüntüleyenler · "+arr.length;
+  q("#listModalBody").innerHTML=arr.length?arr.map(function(v){var p=pmap[v.viewer_id]||{};return'<div class="person-row" data-profile="'+(p.id||"")+'"><img class="avatar" src="'+avatar(p)+'"><div class="row-copy"><b>'+safe(p.username||"kullanici")+'</b><span>'+ago(v.viewed_at)+'</span></div></div>'}).join(""):'<div class="empty">Henüz kimse görüntülemedi.</div>';
+  openModal("listModal");bindProfileLinksAndFollows()
+}
+async function reportTarget(type,id){
+  var reason=prompt("Şikayet nedeni? (spam, taciz, sahte hesap, uygunsuz içerik vb.)");if(!reason)return;
+  var details=prompt("İstersen kısa bir açıklama ekle:")||"";
+  var payload={reporter_id:user.id,target_type:type,reason:reason.slice(0,80),details:details.slice(0,500)};
+  if(type==="user")payload.target_user_id=id;if(type==="post")payload.target_post_id=id;
+  var r=await db.from("instrix_reports").insert(payload);if(r.error)return toast(r.error.message);closeModal("actionModal");toast("Şikayet gönderildi")
+}
+async function openUserActions(otherId){
+  var b=await db.from("instrix_blocks").select("*").eq("blocker_id",user.id).eq("blocked_id",otherId).maybeSingle();
+  q("#actionModalTitle").textContent="Hesap işlemleri";
+  q("#actionModalBody").innerHTML='<button id="blockUserAction" class="danger">'+(b.data?"Engeli kaldır":"Kullanıcıyı engelle")+'</button><button id="reportUserAction">Hesabı şikayet et</button>';
+  openModal("actionModal");
+  q("#blockUserAction").onclick=async function(){
+    var r=b.data?await db.from("instrix_blocks").delete().eq("blocker_id",user.id).eq("blocked_id",otherId):await db.from("instrix_blocks").insert({blocker_id:user.id,blocked_id:otherId});
+    if(r.error)return toast(r.error.message);closeModal("actionModal");toast(b.data?"Engel kaldırıldı":"Kullanıcı engellendi");profileId=user.id;showView("home")
+  };
+  q("#reportUserAction").onclick=function(){reportTarget("user",otherId)}
+}
+async function openPostActions(postId,own){
+  var p=(cache.posts||[]).find(function(x){return x.id===postId});if(!p){var r=await db.from("instrix_posts").select("*").eq("id",postId).maybeSingle();p=r.data}
+  q("#actionModalTitle").textContent="Gönderi işlemleri";
+  q("#actionModalBody").innerHTML=own?'<button id="editPostAction"><i class="fa-regular fa-pen-to-square"></i> Açıklamayı düzenle</button><button id="deletePostAction" class="danger"><i class="fa-regular fa-trash-can"></i> Gönderiyi sil</button>':'<button id="reportPostAction" class="danger"><i class="fa-regular fa-flag"></i> Gönderiyi şikayet et</button>';
+  openModal("actionModal");
+  if(own&&q("#editPostAction"))q("#editPostAction").onclick=async function(){var cap=prompt("Gönderi açıklaması:",p&&p.caption||"");if(cap===null)return;var u=await db.from("instrix_posts").update({caption:cap.slice(0,2200)}).eq("id",postId);if(u.error)return toast(u.error.message);closeModal("actionModal");toast("Gönderi güncellendi");loadFeed()};
+  if(own&&q("#deletePostAction"))q("#deletePostAction").onclick=function(){closeModal("actionModal");deletePost(postId)};
+  if(!own&&q("#reportPostAction"))q("#reportPostAction").onclick=function(){reportTarget("post",postId)}
 }
 
 qa("[data-close]").forEach(function(b){b.onclick=function(){closeModal(b.getAttribute("data-close"))}});
