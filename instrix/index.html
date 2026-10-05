@@ -631,8 +631,8 @@ async function loadStories(){
 async function openStorySet(arr,prof){
   if(!arr.length)return;var idx=0;openModal("storyModal");
   async function render(){
-    var s=arr[idx];await db.from("instrix_story_views").upsert({story_id:s.id,viewer_id:user.id},{onConflict:"story_id,viewer_id"});
-    var own=s.user_id===user.id;
+    var s=arr[idx],own=s.user_id===user.id;
+    if(!own)await db.from("instrix_story_views").upsert({story_id:s.id,viewer_id:user.id},{onConflict:"story_id,viewer_id"});
     q("#storyModal").innerHTML='<div class="story-viewer">'+mediaHtml(s)+'<div class="story-overlay"></div><div class="story-top"><img class="avatar" src="'+avatar(prof)+'" alt=""><b>'+safe(prof.username||"kullanici")+'</b><span class="tiny" style="color:#ddd">'+ago(s.created_at)+'</span><button class="story-close" id="storyClose"><i class="fa-solid fa-xmark"></i></button></div>'+
       (own?'<button class="story-viewers-btn" id="storyViewersBtn"><i class="fa-regular fa-eye"></i> Görüntüleyenler</button>':'')+
       '<div class="story-reply">'+(own?'<input disabled value="Kendi hikâyen">':'<input id="storyReply" placeholder="Mesaj gönder...">')+'<button id="storyNext" class="icon-btn" style="background:rgba(0,0,0,.3);border-color:rgba(255,255,255,.25)"><i class="fa-solid fa-chevron-right"></i></button></div></div>';
@@ -660,7 +660,9 @@ async function toggleFollow(other,btn){
   var existing=await db.from("instrix_follows").select("following_id").eq("follower_id",user.id).eq("following_id",other).maybeSingle();
   if(existing.data){
     var d=await db.from("instrix_follows").delete().eq("follower_id",user.id).eq("following_id",other);
-    if(d.error)return toast(d.error.message);toast("Takip bırakıldı")
+    if(d.error)return toast(d.error.message);
+    await db.from("instrix_follow_requests").delete().eq("requester_id",user.id).eq("target_id",other);
+    toast("Takip bırakıldı")
   }else{
     var pr=cache.profiles[other]?{data:cache.profiles[other]}:await db.from("instrix_profiles").select("*").eq("id",other).single();
     if(pr.error)return toast(pr.error.message);
@@ -669,6 +671,7 @@ async function toggleFollow(other,btn){
       if(req.data){
         var cd=await db.from("instrix_follow_requests").delete().eq("id",req.data.id);if(cd.error)return toast(cd.error.message);toast("Takip isteği iptal edildi")
       }else{
+        await db.from("instrix_follow_requests").delete().eq("requester_id",user.id).eq("target_id",other).neq("status","pending");
         var cr=await db.from("instrix_follow_requests").insert({requester_id:user.id,target_id:other});if(cr.error)return toast(cr.error.message);toast("Takip isteği gönderildi")
       }
     }else{
