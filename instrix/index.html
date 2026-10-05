@@ -960,7 +960,7 @@ async function loadFeed(){
   var query=db.from("instrix_posts").select("*").order("created_at",{ascending:false}).limit(35);
   if(allowed)query=query.in("user_id",allowed);
   var r=await query;if(r.error){empty("#feed","fa-solid fa-triangle-exclamation","Akış yüklenemedi",r.error.message);return}
-  var posts=r.data||[];cache.posts=posts;
+  var posts=r.data||[];cache.posts=posts;cache.postById=cache.postById||{};posts.forEach(function(p){cache.postById[String(p.id)]=p});
   if(!posts.length){
     await renderHomeExternalFallback(true);
     return
@@ -1027,10 +1027,11 @@ function bindPosts(){
   bindRichLinks();
 }
 
-async function openPostDetail(postId){
-  postId=String(postId||"").trim();
+async function openPostDetail(postOrId){
+  var seedPost=postOrId&&typeof postOrId==="object"?postOrId:null;
+  var postId=String(seedPost?seedPost.id:(postOrId||"")).trim();
   loading("#postDetailBody");openModal("postDetailModal");
-  var cachedPost=(cache.postById&&cache.postById[postId])||(cache.posts||[]).find(function(x){return String(x.id)===postId})||null;
+  var cachedPost=seedPost||(cache.postById&&cache.postById[postId])||(cache.posts||[]).find(function(x){return String(x.id)===postId})||null;
   var p=cachedPost;
 
   if(!p){
@@ -1059,7 +1060,11 @@ async function openPostDetail(postId){
   var likes=results[0].data||[],detailComments=results[1].data||[],liked=likes.some(function(x){return x.user_id===user.id}),saved=!!((results[2].data||[])[0]),media=results[3].data||[];
   var detailProfiles=await getProfiles(detailComments.map(function(x){return x.user_id}));detailProfiles[p.user_id]=prof;
   cache.likes[p.id]=liked;cache.saved[p.id]=saved;cache.media=cache.media||{};cache.media[p.id]=media;
-  q("#postDetailBody").innerHTML=postHtml(p,prof,likes.length,detailComments.length,liked,saved,media,detailComments,detailProfiles);
+  q("#postDetailBody").innerHTML=postHtml(p,prof,likes.length,detailComments.length,liked,saved,media,detailComments,detailProfiles)+
+    '<div style="border-top:1px solid #262626;padding:14px">'+
+    '<div style="font-weight:700;margin-bottom:10px">Yorumlar</div>'+
+    (detailComments.length?detailComments.map(function(c){var cp=detailProfiles[c.user_id]||{};return'<div class="comment-row" style="padding:8px 0"><img class="avatar" src="'+avatar(cp)+'" alt=""><div class="comment-copy"><div><b>'+safe(cp.username||"kullanici")+'</b> '+richText(c.body)+'</div><div class="tiny">'+ago(c.created_at)+'</div></div></div>'}).join(""):'<div class="tiny">Henüz yorum yok.</div>')+
+    '</div>';
   bindPosts()
 }
 
@@ -1088,8 +1093,11 @@ async function deletePost(id){
   var r=await db.from("instrix_posts").delete().eq("id",id);if(r.error)return toast(r.error.message);closeModal("postDetailModal");toast("Gönderi silindi");if(currentView==="profile")await loadProfile(profileId,profileTab);else if(currentView==="home")await loadFeed()
 }
 
-async function openComments(postId){
-  currentCommentPost=postId;currentReplyTo=null;syncReplyBar();openModal("commentsModal");await loadComments()
+async function openComments(postOrId){
+  var p=postOrId&&typeof postOrId==="object"?postOrId:null;
+  currentCommentPost=String(p?p.id:(postOrId||"")).trim();
+  if(!currentCommentPost)return toast("Gönderi bilgisi okunamadı");
+  currentReplyTo=null;syncReplyBar();openModal("commentsModal");await loadComments()
 }
 function syncReplyBar(){
   var bar=q("#replyingBar");if(!bar)return;
@@ -1131,6 +1139,9 @@ q("#sendCommentBtn").onclick=async function(){
   await loadComments();
   var cc=await db.from("instrix_comments").select("*",{count:"exact",head:true}).eq("post_id",currentCommentPost);
   qa('[data-comment="'+currentCommentPost+'"]').forEach(function(el){if(el.classList.contains("comments-link"))el.textContent=(cc.count||0)+" yorumun tümünü gör"});
+  if(currentView==="home")await loadFeed();
+  if(currentView==="profile")await loadProfile(profileId||user.id,profileTab);
+  if(q("#postDetailModal").classList.contains("show"))await openPostDetail((cache.postById||{})[currentCommentPost]||currentCommentPost);
   toast("Yorum eklendi")
 };
 q("#commentInput").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();q("#sendCommentBtn").click()}});
@@ -1314,8 +1325,9 @@ async function loadExplore(){
   if(!arr.length){empty("#exploreGrid","fa-regular fa-compass","Instrix keşfeti henüz boş","Instagram + TikTok sekmesinde public içerikleri kaynak platformdan görüntüleyebilirsin.");return}
   var likes=await db.from("instrix_post_likes").select("post_id").in("post_id",arr.map(function(x){return x.id}));
   var lc={};(likes.data||[]).forEach(function(x){lc[x.post_id]=(lc[x.post_id]||0)+1});
+  cache.postById=cache.postById||{};arr.forEach(function(p){cache.postById[String(p.id)]=p});
   q("#exploreGrid").innerHTML=arr.map(function(p){return'<div class="grid-item" data-open-post="'+p.id+'>'+mediaHtml(p)+'<div class="grid-hover"><span><i class="fa-solid fa-heart"></i> '+fmt(lc[p.id]||0)+'</span></div></div>'}).join("");
-  qa("[data-open-post]").forEach(function(x){x.onclick=function(){openPostDetail(x.getAttribute("data-open-post"))}})
+  qa("[data-open-post]").forEach(function(el,i){el.onclick=function(){openPostDetail(arr[i]||el.getAttribute("data-open-post"))}})
 }
 qa("[data-explore-tab]").forEach(function(x){x.onclick=function(){exploreMode=x.getAttribute("data-explore-tab");loadExplore()}});
 q("#refreshExplore").onclick=loadExplore;
@@ -1484,7 +1496,7 @@ async function loadProfile(id,tab){
     var thumb=first.media_type==="video"?'<video src="'+safe(first.media_url)+'" muted playsinline preload="metadata"></video>':'<img src="'+safe(first.media_url)+'" alt="">';
     return'<div class="grid-item" data-profile-post="'+x.id+'>'+thumb+(mm.length>1?'<span style="position:absolute;right:8px;top:8px;text-shadow:0 2px 6px #000"><i class="fa-solid fa-clone"></i></span>':'')+'</div>'
   }).join("");
-  qa("[data-profile-post]").forEach(function(x){x.onclick=function(){openPostDetail(x.getAttribute("data-profile-post"))}})
+  qa("[data-profile-post]").forEach(function(el,i){el.onclick=function(){openPostDetail(posts[i]||el.getAttribute("data-profile-post"))}})
 }
 
 qa("[data-profile-tab]").forEach(function(x){x.onclick=function(){profileTab=x.getAttribute("data-profile-tab");loadProfile(profileId,profileTab)}});
@@ -1825,8 +1837,9 @@ async function openHashtag(tag){
   var r=await db.from("instrix_posts").select("*").ilike("caption","%#"+tag+"%").order("created_at",{ascending:false}).limit(80);
   var arr=r.data||[];
   if(!arr.length){empty("#exploreGrid","fa-solid fa-hashtag","Gönderi bulunamadı","#"+tag+" etiketiyle henüz paylaşım yok.");return}
+  cache.postById=cache.postById||{};arr.forEach(function(p){cache.postById[String(p.id)]=p});
   q("#exploreGrid").innerHTML=arr.map(function(p){return'<div class="grid-item" data-open-post="'+p.id+'>'+mediaHtml(p)+'</div>'}).join("");
-  qa("[data-open-post]").forEach(function(x){x.onclick=function(){showView("home");setTimeout(function(){var el=q('[data-post="'+x.getAttribute("data-open-post")+'"]');if(el)el.scrollIntoView({behavior:"smooth",block:"center"})},350)}})
+  qa("[data-open-post]").forEach(function(el,i){el.onclick=function(){openPostDetail(arr[i]||el.getAttribute("data-open-post"))}})
 }
 async function showStoryViewers(storyId){
   var r=await db.from("instrix_story_views").select("*").eq("story_id",storyId).order("viewed_at",{ascending:false});
