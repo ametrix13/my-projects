@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0c10" />
+  <meta name="description" content="Instrix — paylaş, keşfet, hikayeni anlat ve arkadaşlarınla konuş." />
+  <title>Instrix</title>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <style>
+    :root{
+      --bg:#0b0b0f;--panel:#121218;--panel2:#181820;--text:#f7f7fb;--muted:#8f8fa3;
+      --line:#242430;--accent:#8b5cf6;--accent2:#22c55e;--danger:#ff3b6b;--shadow:0 18px 60px rgba(0,0,0,.35);
+      --radius:22px;--side:250px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    button,input,textarea{font:inherit}
+    button{color:inherit}
+    a{color:inherit;text-decoration:none}
+    ::-webkit-scrollbar{width:10px;height:8px}
+    ::-webkit-scrollbar-thumb{background:#343441;border-radius:99px}
+    .app{min-height:100vh}
+    .sidebar{position:fixed;inset:0 auto 0 0;width:var(--side);border-right:1px solid var(--line);padding:26px 18px;display:flex;flex-direction:column;background:rgba(11,11,15,.95);backdrop-filter:blur(16px);z-index:30}
+    .brand{display:flex;align-items:center;gap:11px;font-size:28px;font-weight:900;letter-spacing:-1.2px;padding:4px 10px 25px}
+    .brand-mark{width:37px;height:37px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#ec4899 55%,var(--accent2));display:grid;place-items:center;box-shadow:0 10px 30px rgba(139,92,246,.28)}
+    .brand-mark:after{content:"X";font-weight:1000;color:white;font-size:20px}
+    .nav{display:grid;gap:7px}
+    .nav-btn{display:flex;align-items:center;gap:14px;width:100%;border:0;background:transparent;padding:13px 14px;border-radius:14px;cursor:pointer;font-weight:700;color:#d7d7e3;text-align:left}
+    .nav-btn i{width:24px;text-align:center;font-size:21px}
+    .nav-btn:hover,.nav-btn.active{background:var(--panel2);color:white}
+    .nav-btn.active i{color:#b9a1ff}
+    .badge{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--danger);display:grid;place-items:center;font-size:11px;color:#fff}
+    .side-foot{margin-top:auto;border-top:1px solid var(--line);padding-top:16px}
+    .mini-user{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;cursor:pointer}
+    .mini-user:hover{background:var(--panel2)}
+    .avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;background:#333;flex:0 0 auto}
+    .tiny{font-size:12px;color:var(--muted)}
+    .main{margin-left:var(--side);min-height:100vh}
+    .topbar{position:sticky;top:0;height:72px;border-bottom:1px solid rgba(36,36,48,.8);display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(11,11,15,.82);backdrop-filter:blur(18px);z-index:20}
+    .mobile-brand{display:none}
+    .searchbox{width:min(440px,46vw);height:44px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;display:flex;align-items:center;gap:10px;padding:0 14px;color:var(--muted)}
+    .searchbox input{flex:1;border:0;outline:none;background:transparent;color:var(--text)}
+    .top-actions{display:flex;gap:8px}
+    .icon-btn{width:42px;height:42px;border:1px solid var(--line);background:var(--panel);border-radius:14px;display:grid;place-items:center;cursor:pointer;position:relative}
+    .icon-btn:hover{background:var(--panel2)}
+    .dot{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--danger);top:7px;right:8px;border:2px solid var(--panel)}
+    .content{max-width:1180px;margin:0 auto;padding:26px 26px 110px}
+    .view{display:none}.view.active{display:block}
+    .feed-shell{display:grid;grid-template-columns:minmax(0,630px) 320px;gap:36px;align-items:start;justify-content:center}
+    .stories{display:flex;gap:14px;overflow:auto;padding:5px 2px 19px;margin-bottom:8px;scrollbar-width:none}
+    .stories::-webkit-scrollbar{display:none}
+    .story{width:76px;flex:0 0 76px;text-align:center;cursor:pointer}
+    .story-ring{width:68px;height:68px;border-radius:50%;padding:3px;background:linear-gradient(135deg,#ff7a00,#ff2e93 48%,#8b5cf6);margin:auto;position:relative}
+    .story-ring.seen{background:#3a3a46}
+    .story-ring img{width:100%;height:100%;object-fit:cover;border-radius:50%;border:3px solid var(--bg)}
+    .story-plus{position:absolute;right:1px;bottom:0;width:21px;height:21px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);display:grid;place-items:center;font-size:12px}
+    .story-name{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:7px;color:#d3d3de}
+    .tabs{display:flex;gap:6px;padding:0 0 16px}
+    .pill{border:1px solid var(--line);background:var(--panel);padding:9px 14px;border-radius:999px;cursor:pointer;font-weight:800;font-size:13px;color:var(--muted)}
+    .pill.active{background:#fff;color:#0c0c10;border-color:#fff}
+    .post{border:1px solid var(--line);background:var(--panel);border-radius:24px;overflow:hidden;margin-bottom:22px;box-shadow:0 10px 35px rgba(0,0,0,.12)}
+    .post-head{display:flex;align-items:center;padding:13px 14px;gap:10px}
+    .post-head .avatar{width:39px;height:39px}
+    .post-user{font-weight:850;font-size:14px}
+    .verified{color:#7c8cff;margin-left:3px;font-size:12px}
+    .post-meta{font-size:11px;color:var(--muted);margin-top:2px}
+    .more{margin-left:auto;background:none;border:0;cursor:pointer;font-size:19px}
+    .post-media{width:100%;aspect-ratio:1/1;position:relative;background:#1c1c24;overflow:hidden}
+    .post-media img{width:100%;height:100%;object-fit:cover;display:block}
+    .double-heart{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;font-size:80px;color:white;opacity:0;transform:scale(.2);filter:drop-shadow(0 8px 28px rgba(0,0,0,.4))}
+    .double-heart.pop{animation:heartpop .68s ease}
+    @keyframes heartpop{0%{opacity:0;transform:scale(.2)}25%{opacity:1;transform:scale(1.18)}55%{opacity:1;transform:scale(.95)}100%{opacity:0;transform:scale(1.28)}}
+    .post-actions{display:flex;align-items:center;gap:4px;padding:10px 11px 6px}
+    .post-actions button{width:39px;height:39px;border:0;background:transparent;border-radius:12px;font-size:21px;cursor:pointer}
+    .post-actions button:hover{background:var(--panel2)}
+    .post-actions .liked{color:var(--danger)}
+    .post-actions .saved{color:#f4d35e}
+    .post-actions .save-btn{margin-left:auto}
+    .post-body{padding:0 14px 15px}
+    .likes{font-weight:850;font-size:13px;margin-bottom:7px}
+    .caption{font-size:14px;line-height:1.45}
+    .caption b{margin-right:5px}
+    .comments-link{color:var(--muted);font-size:13px;margin-top:8px;cursor:pointer}
+    .time{color:#6f6f81;font-size:10px;text-transform:uppercase;margin-top:9px}
+    .right-card{border:1px solid var(--line);background:var(--panel);border-radius:20px;padding:16px;position:sticky;top:94px}
+    .suggest-title{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted);font-weight:850;margin-bottom:8px}
+    .suggestion{display:flex;align-items:center;gap:10px;padding:10px 2px}
+    .suggestion .avatar{width:41px;height:41px}
+    .suggestion .who{min-width:0;flex:1}
+    .suggestion b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .follow-btn{border:0;background:transparent;color:#9f8cff;font-weight:900;font-size:12px;cursor:pointer}
+    .follow-btn.following{color:var(--muted)}
+    .right-links{font-size:11px;line-height:1.8;color:#666679;margin-top:15px}
+    .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    .section-head h2{font-size:27px;margin:0;letter-spacing:-.7px}
+    .explore-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;border-radius:18px;overflow:hidden}
+    .grid-item{position:relative;aspect-ratio:1/1;background:#222;cursor:pointer;overflow:hidden}
+    .grid-item:nth-child(8n+1),.grid-item:nth-child(8n+6){grid-row:span 2;aspect-ratio:auto}
+    .grid-item img{width:100%;height:100%;object-fit:cover;transition:transform .3s ease}
+    .grid-item:hover img{transform:scale(1.04)}
+    .grid-hover{position:absolute;inset:0;background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;gap:20px;font-weight:900;opacity:0;transition:.2s}
+    .grid-item:hover .grid-hover{opacity:1}
+    .reels{height:calc(100vh - 118px);overflow-y:auto;scroll-snap-type:y mandatory;border-radius:24px}
+    .reel{height:calc(100vh - 118px);min-height:620px;max-height:850px;scroll-snap-align:start;position:relative;background:#17171f;overflow:hidden;border-radius:24px;margin-bottom:14px}
+    .reel img{width:100%;height:100%;object-fit:cover;filter:brightness(.72)}
+    .reel-shade{position:absolute;inset:0;background:linear-gradient(transparent 55%,rgba(0,0,0,.78))}
+    .reel-info{position:absolute;left:22px;right:90px;bottom:26px}
+    .reel-user{display:flex;align-items:center;gap:9px;font-weight:900}
+    .reel-user .avatar{width:37px;height:37px;border:2px solid white}
+    .reel-info p{font-size:14px;line-height:1.45}
+    .reel-actions{position:absolute;right:17px;bottom:28px;display:grid;gap:12px}
+    .reel-actions button{width:49px;height:49px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.28);backdrop-filter:blur(10px);font-size:20px;cursor:pointer}
+    .reel-count{text-align:center;font-size:11px;font-weight:800;margin-top:4px}
+    .dm-wrap{display:grid;grid-template-columns:330px 1fr;height:calc(100vh - 126px);min-height:620px;border:1px solid var(--line);border-radius:24px;overflow:hidden;background:var(--panel)}
+    .dm-list{border-right:1px solid var(--line);overflow:auto}
+    .dm-list-head{padding:18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+    .dm-list-head b{font-size:18px}
+    .chat-row{display:flex;gap:11px;padding:13px 16px;cursor:pointer;align-items:center}
+    .chat-row:hover,.chat-row.active{background:var(--panel2)}
+    .chat-row .avatar{width:48px;height:48px}
+    .chat-row .chat-copy{min-width:0;flex:1}
+    .chat-row b{font-size:13px}
+    .chat-preview{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+    .unread{width:9px;height:9px;background:#8b5cf6;border-radius:50%}
+    .chat-pane{display:flex;flex-direction:column;min-width:0}
+    .chat-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
+    .chat-head .avatar{width:40px;height:40px}
+    .chat-messages{flex:1;padding:20px;overflow:auto;display:flex;flex-direction:column;gap:9px;background:radial-gradient(circle at 70% 0,rgba(139,92,246,.08),transparent 32%)}
+    .msg{max-width:min(72%,520px);padding:10px 13px;border-radius:18px;font-size:14px;line-height:1.45}
+    .msg.them{align-self:flex-start;background:var(--panel2);border-bottom-left-radius:5px}
+    .msg.me{align-self:flex-end;background:linear-gradient(135deg,#7c3aed,#9f5cff);color:white;border-bottom-right-radius:5px}
+    .msg-time{font-size:10px;opacity:.62;margin-top:4px}
+    .chat-compose{display:flex;align-items:flex-end;gap:8px;padding:12px;border-top:1px solid var(--line)}
+    .chat-compose textarea{flex:1;resize:none;max-height:120px;min-height:44px;border:1px solid var(--line);border-radius:16px;background:var(--panel2);color:var(--text);outline:none;padding:12px 14px}
+    .send-btn{width:44px;height:44px;border-radius:14px;border:0;background:var(--accent);cursor:pointer}
+    .profile-head{display:grid;grid-template-columns:170px 1fr;gap:34px;align-items:center;padding:24px 22px 36px}
+    .profile-avatar{width:145px;height:145px;border-radius:50%;object-fit:cover;border:1px solid var(--line)}
+    .profile-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .profile-top h2{margin:0;font-size:22px}
+    .primary{border:0;background:#fff;color:#0d0d12;font-weight:900;padding:10px 16px;border-radius:12px;cursor:pointer}
+    .secondary{border:1px solid var(--line);background:var(--panel2);font-weight:850;padding:9px 14px;border-radius:12px;cursor:pointer}
+    .stats{display:flex;gap:28px;margin:22px 0 15px;font-size:14px}
+    .stats b{font-size:16px}
+    .bio{font-size:14px;line-height:1.5}
+    .profile-tabs{border-top:1px solid var(--line);display:flex;justify-content:center;gap:44px}
+    .profile-tab{padding:16px 0;border-top:2px solid transparent;margin-top:-1px;color:var(--muted);font-size:12px;font-weight:900;letter-spacing:.6px;cursor:pointer}
+    .profile-tab.active{border-color:#fff;color:#fff}
+    .profile-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+    .profile-grid .grid-item{aspect-ratio:1/1!important;grid-row:auto!important}
+    .empty{padding:70px 20px;text-align:center;color:var(--muted)}
+    .empty i{font-size:42px;margin-bottom:15px}
+    .notification-panel{position:fixed;right:18px;top:68px;width:min(390px,calc(100vw - 36px));max-height:70vh;overflow:auto;background:rgba(18,18,24,.98);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);z-index:50;display:none}
+    .notification-panel.show{display:block}
+    .panel-title{font-size:18px;font-weight:900;padding:17px;border-bottom:1px solid var(--line)}
+    .notif{display:flex;gap:11px;padding:13px 16px;align-items:center}
+    .notif:hover{background:var(--panel2)}
+    .notif .avatar{width:42px;height:42px}
+    .notif-copy{font-size:13px;line-height:1.4;flex:1}
+    .notif-time{font-size:11px;color:var(--muted)}
+    .thumb{width:44px;height:44px;object-fit:cover;border-radius:8px}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;padding:18px;z-index:90;backdrop-filter:blur(8px)}
+    .modal.show{display:flex}
+    .modal-card{width:min(560px,100%);max-height:92vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow)}
+    .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);font-weight:900}
+    .close{border:0;background:transparent;font-size:20px;cursor:pointer}
+    .form{padding:18px;display:grid;gap:14px}
+    .field label{display:block;font-size:12px;color:var(--muted);font-weight:800;margin-bottom:7px}
+    .field input,.field textarea{width:100%;border:1px solid var(--line);border-radius:14px;background:var(--panel2);color:var(--text);padding:12px 13px;outline:none}
+    .field textarea{min-height:100px;resize:vertical}
+    .preview-box{aspect-ratio:1/1;border:1px dashed #3b3b49;border-radius:18px;overflow:hidden;display:grid;place-items:center;color:var(--muted);background:#101016}
+    .preview-box img{width:100%;height:100%;object-fit:cover}
+    .submit{border:0;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-weight:900;padding:12px 16px;border-radius:14px;cursor:pointer}
+    .story-modal{background:#050507}
+    .story-card{width:min(430px,95vw);height:min(760px,88vh);position:relative;border-radius:24px;overflow:hidden;background:#111}
+    .story-bg{width:100%;height:100%;object-fit:cover}
+    .story-overlay{position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.48),transparent 24%,transparent 68%,rgba(0,0,0,.65))}
+    .story-progress{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:4px}
+    .story-progress span{height:3px;background:rgba(255,255,255,.32);border-radius:99px;flex:1;overflow:hidden}
+    .story-progress span:after{content:"";display:block;height:100%;width:0;background:white}
+    .story-progress span.active:after{animation:progress 5s linear forwards}
+    .story-progress span.done:after{width:100%}
+    @keyframes progress{to{width:100%}}
+    .story-top{position:absolute;top:26px;left:15px;right:15px;display:flex;align-items:center;gap:9px}
+    .story-top .avatar{width:36px;height:36px}
+    .story-top b{font-size:13px}
+    .story-close{margin-left:auto;border:0;background:rgba(0,0,0,.28);width:36px;height:36px;border-radius:50%;cursor:pointer}
+    .story-nav{position:absolute;inset:80px 0 70px;display:grid;grid-template-columns:1fr 1fr}
+    .story-nav button{border:0;background:transparent;cursor:pointer}
+    .story-reply{position:absolute;left:14px;right:14px;bottom:16px;display:flex;gap:8px}
+    .story-reply input{flex:1;border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.28);border-radius:99px;padding:11px 15px;color:white;outline:none}
+    .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);background:#fff;color:#111;padding:11px 16px;border-radius:999px;font-size:13px;font-weight:850;opacity:0;pointer-events:none;z-index:150;transition:.25s;box-shadow:var(--shadow)}
+    .toast.show{opacity:1;transform:translate(-50%,0)}
+    .bottom-nav{display:none}
+    .search-view-wrap{max-width:760px;margin:0 auto}
+    .big-search{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--panel);border-radius:18px;padding:14px 16px;margin-bottom:16px}
+    .big-search input{flex:1;background:transparent;border:0;outline:none;color:var(--text);font-size:16px}
+    .people-list{display:grid;gap:8px}
+    .person-card{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);padding:12px 14px;border-radius:17px}
+    .person-card .avatar{width:50px;height:50px}
+    .person-card .who{flex:1}
+    .person-card b{display:block}
+    .person-card span{font-size:12px;color:var(--muted)}
+    @media(max-width:1000px){
+      :root{--side:86px}
+      .brand span,.nav-btn span,.mini-user .mini-copy{display:none}
+      .brand{justify-content:center;padding-left:0;padding-right:0}
+      .nav-btn{justify-content:center;padding:14px}.nav-btn i{width:auto}
+      .badge{position:absolute;margin-left:30px;margin-top:-25px}
+      .mini-user{justify-content:center}
+      .right-card{display:none}
+      .feed-shell{grid-template-columns:minmax(0,630px)}
+    }
+    @media(max-width:720px){
+      :root{--side:0px}
+      .sidebar{display:none}
+      .main{margin-left:0}
+      .topbar{height:62px;padding:0 14px}
+      .mobile-brand{display:flex;align-items:center;gap:8px;font-weight:950;font-size:21px}
+      .mobile-brand .brand-mark{width:30px;height:30px;border-radius:10px}
+      .searchbox{display:none}
+      .content{padding:15px 0 86px}
+      #homeView .content-pad{padding:0 10px}
+      .feed-shell{display:block}
+      .post{border-radius:0;border-left:0;border-right:0;margin-bottom:12px}
+      .stories{padding-left:10px;padding-right:10px}
+      .tabs{padding:0 10px 12px}
+      .top-actions .icon-btn:first-child{display:none}
+      .bottom-nav{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;height:68px;padding-bottom:env(safe-area-inset-bottom);border-top:1px solid var(--line);background:rgba(11,11,15,.96);backdrop-filter:blur(18px);z-index:70}
+      .bottom-nav button{border:0;background:transparent;color:#cfcfda;font-size:20px;cursor:pointer}
+      .bottom-nav button.active{color:white}
+      .bottom-nav .create-mobile i{background:linear-gradient(135deg,#7c3aed,#ec4899);width:38px;height:38px;border-radius:12px;display:inline-grid;place-items:center;color:white}
+      .section-head{padding:0 14px}
+      .explore-grid,.profile-grid{gap:2px;border-radius:0}
+      .grid-item:nth-child(8n+1),.grid-item:nth-child(8n+6){grid-row:auto;aspect-ratio:1/1}
+      .reels{border-radius:0;height:calc(100vh - 130px)}
+      .reel{height:calc(100vh - 130px);min-height:540px;border-radius:0;margin:0}
+      .dm-wrap{border-radius:0;border-left:0;border-right:0;height:calc(100vh - 130px);min-height:500px;grid-template-columns:100%}
+      .dm-list{border-right:0}
+      .chat-pane{display:none}
+      .dm-wrap.chat-open .dm-list{display:none}
+      .dm-wrap.chat-open .chat-pane{display:flex}
+      .chat-back{display:grid!important}
+      .profile-head{grid-template-columns:96px 1fr;gap:15px;padding:18px 14px 24px}
+      .profile-avatar{width:88px;height:88px}
+      .stats{gap:14px;font-size:12px}
+      .stats b{font-size:14px}
+      .profile-top h2{font-size:18px}
+      .profile-actions{grid-column:1/-1;display:flex;gap:8px}
+      .notification-panel{top:58px;right:8px;width:calc(100vw - 16px)}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark"></div><span>Instrix</span></div>
+    <nav class="nav">
+      <button class="nav-btn active" data-view="home"><i class="fa-solid fa-house"></i><span>Ana Sayfa</span></button>
+      <button class="nav-btn" data-view="search"><i class="fa-solid fa-magnifying-glass"></i><span>Ara</span></button>
+      <button class="nav-btn" data-view="explore"><i class="fa-regular fa-compass"></i><span>FYP / Keşfet</span></button>
+      <button class="nav-btn" data-view="reels"><i class="fa-solid fa-play"></i><span>Clips</span></button>
+      <button class="nav-btn" data-view="dm"><i class="fa-regular fa-paper-plane"></i><span>Mesajlar</span><b class="badge">3</b></button>
+      <button class="nav-btn" id="notifSide"><i class="fa-regular fa-heart"></i><span>Bildirimler</span></button>
+      <button class="nav-btn" id="createSide"><i class="fa-regular fa-square-plus"></i><span>Oluştur</span></button>
+      <button class="nav-btn" data-view="profile"><i class="fa-regular fa-user"></i><span>Profil</span></button>
+    </nav>
+    <div class="side-foot">
+      <div class="mini-user" data-view="profile">
+        <img class="avatar" src="https://i.pravatar.cc/160?img=12" alt="" />
+        <div class="mini-copy"><b>ametrix</b><div class="tiny">@ametrix</div></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="mobile-brand"><div class="brand-mark"></div>Instrix</div>
+      <div class="searchbox"><i class="fa-solid fa-magnifying-glass"></i><input id="topSearch" placeholder="Ara: kişiler, etiketler, yerler" /></div>
+      <div class="top-actions">
+        <button class="icon-btn" id="themeBtn" title="Tema"><i class="fa-regular fa-moon"></i></button>
+        <button class="icon-btn" id="notifBtn" title="Bildirimler"><i class="fa-regular fa-heart"></i><span class="dot"></span></button>
+        <button class="icon-btn" data-view="dm" title="Mesajlar"><i class="fa-regular fa-paper-plane"></i></button>
+      </div>
+    </header>
+
+    <section id="homeView" class="view active">
+      <div class="content">
+        <div class="feed-shell">
+          <div>
+            <div id="stories" class="stories"></div>
+            <div class="tabs content-pad">
+              <button class="pill active" data-feed="forYou">Senin İçin</button>
+              <button class="pill" data-feed="following">Takip Ettiklerin</button>
+            </div>
+            <div id="feed"></div>
+          </div>
+          <aside class="right-card">
+            <div class="suggest-title"><span>Senin için öneriler</span><span>İnstrix</span></div>
+            <div id="suggestions"></div>
+            <div class="right-links">Hakkında · Yardım · Gizlilik · Koşullar · Konumlar · Dil<br><br>© 2026 INSTRIX</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section id="searchView" class="view">
+      <div class="content search-view-wrap">
+        <div class="section-head"><h2>Ara</h2></div>
+        <div class="big-search"><i class="fa-solid fa-magnifying-glass"></i><input id="bigSearch" placeholder="Kullanıcı adı, isim veya etiket ara" autofocus /></div>
+        <div id="searchResults" class="people-list"></div>
+      </div>
+    </section>
+
+    <section id="exploreView" class="view">
+      <div class="content">
+        <div class="section-head"><h2>Senin için</h2><button class="secondary" id="refreshExplore"><i class="fa-solid fa-wand-magic-sparkles"></i> Yenile</button></div>
+        <div id="exploreGrid" class="explore-grid"></div>
+      </div>
+    </section>
+
+    <section id="reelsView" class="view">
+      <div class="content" style="max-width:520px">
+        <div id="reels" class="reels"></div>
+      </div>
+    </section>
+
+    <section id="dmView" class="view">
+      <div class="content">
+        <div id="dmWrap" class="dm-wrap">
+          <div class="dm-list">
+            <div class="dm-list-head"><b>Mesajlar</b><button class="icon-btn" style="width:36px;height:36px"><i class="fa-regular fa-pen-to-square"></i></button></div>
+            <div id="chatList"></div>
+          </div>
+          <div class="chat-pane">
+            <div id="chatHead" class="chat-head"></div>
+            <div id="chatMessages" class="chat-messages"></div>
+            <div class="chat-compose">
+              <button class="icon-btn" style="width:44px;height:44px"><i class="fa-regular fa-face-smile"></i></button>
+              <textarea id="messageInput" rows="1" placeholder="Mesaj yaz..."></textarea>
+              <button id="sendBtn" class="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="profileView" class="view">
+      <div class="content" style="max-width:940px">
+        <div class="profile-head">
+          <img id="profileAvatar" class="profile-avatar" src="https://i.pravatar.cc/300?img=12" alt="" />
+          <div>
+            <div class="profile-top">
+              <h2 id="profileUsername">ametrix</h2><i class="fa-solid fa-circle-check verified"></i>
+              <button class="secondary" id="editProfileBtn">Profili düzenle</button>
+              <button class="secondary"><i class="fa-solid fa-gear"></i></button>
+            </div>
+            <div class="stats">
+              <span><b id="postCount">8</b> gönderi</span>
+              <span><b>12.8K</b> takipçi</span>
+              <span><b>386</b> takip</span>
+            </div>
+            <div class="bio"><b id="profileName">Ametrix</b><br><span id="profileBio">music • code • late night ideas ✦<br>creating things on the internet</span></div>
+          </div>
+          <div class="profile-actions"></div>
+        </div>
+        <div class="profile-tabs">
+          <div class="profile-tab active" data-profile-tab="posts"><i class="fa-solid fa-table-cells"></i> GÖNDERİLER</div>
+          <div class="profile-tab" data-profile-tab="saved"><i class="fa-regular fa-bookmark"></i> KAYDEDİLENLER</div>
+          <div class="profile-tab" data-profile-tab="tagged"><i class="fa-regular fa-user"></i> ETİKETLENENLER</div>
+        </div>
+        <div id="profileGrid" class="profile-grid"></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav">
+    <button class="active" data-view="home"><i class="fa-solid fa-house"></i></button>
+    <button data-view="explore"><i class="fa-regular fa-compass"></i></button>
+    <button class="create-mobile" id="createMobile"><i class="fa-solid fa-plus"></i></button>
+    <button data-view="reels"><i class="fa-solid fa-play"></i></button>
+    <button data-view="dm"><i class="fa-regular fa-paper-plane"></i></button>
+    <button data-view="profile"><i class="fa-regular fa-user"></i></button>
+  </nav>
+
+  <div id="notificationPanel" class="notification-panel">
+    <div class="panel-title">Bildirimler</div>
+    <div id="notifications"></div>
+  </div>
+
+  <div id="createModal" class="modal">
+    <div class="modal-card">
+      <div class="modal-head"><span>Yeni gönderi</span><button class="close" data-close="createModal"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="form">
+        <div class="preview-box" id="postPreview"><span><i class="fa-regular fa-image"></i> Fotoğraf önizlemesi</span></div>
+        <div class="field"><label>Fotoğraf seç</label><input id="postFile" type="file" accept="image/*" /></div>
+        <div class="field"><label>veya fotoğraf URL'si</label><input id="postUrl" placeholder="https://..." /></div>
+        <div class="field"><label>Açıklama</label><textarea id="postCaption" placeholder="Bir şeyler yaz..."></textarea></div>
+        <div class="field"><label>Konum</label><input id="postLocation" placeholder="Konum ekle" /></div>
+        <button id="sharePostBtn" class="submit">Paylaş</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="editProfileModal" class="modal">
+    <div class="modal-card">
+      <div class="modal-head"><span>Profili düzenle</span><button class="close" data-close="editProfileModal"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="form">
+        <div class="field"><label>Görünen ad</label><input id="editName" value="Ametrix" /></div>
+        <div class="field"><label>Kullanıcı adı</label><input id="editUsername" value="ametrix" /></div>
+        <div class="field"><label>Biyografi</label><textarea id="editBio">music • code • late night ideas ✦&#10;creating things on the internet</textarea></div>
+        <button id="saveProfileBtn" class="submit">Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="commentsModal" class="modal">
+    <div class="modal-card">
+      <div class="modal-head"><span>Yorumlar</span><button class="close" data-close="commentsModal"><i class="fa-solid fa-xmark"></i></button></div>
+      <div id="commentList" style="padding:10px 18px 0"></div>
+      <div class="chat-compose" style="border-top:1px solid var(--line);margin-top:10px">
+        <input id="commentInput" style="flex:1;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:16px;padding:12px;outline:none" placeholder="Yorum ekle..." />
+        <button id="sendCommentBtn" class="send-btn"><i class="fa-solid fa-arrow-up"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="storyModal" class="modal story-modal"></div>
+  <div id="toast" class="toast">Tamam</div>
+</div>
+
+<script>
+(function(){
+  var $ = function(s){ return document.querySelector(s); };
+  var $$ = function(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); };
+  var storeKey = "instrix-state-v1";
+  var stored = {};
+  try{ stored = JSON.parse(localStorage.getItem(storeKey) || "{}"); }catch(e){ stored = {}; }
+
+  var users = [
+    {u:"selin",n:"Selin Kaya",a:"https://i.pravatar.cc/160?img=47",bio:"film • coffee • tiny adventures",v:true},
+    {u:"mert.jpg",n:"Mert",a:"https://i.pravatar.cc/160?img=11",bio:"photography / istanbul",v:false},
+    {u:"deniz.wav",n:"Deniz",a:"https://i.pravatar.cc/160?img=32",bio:"producer & night owl",v:true},
+    {u:"lina",n:"Lina A.",a:"https://i.pravatar.cc/160?img=44",bio:"designing my own little world",v:false},
+    {u:"arda.dev",n:"Arda",a:"https://i.pravatar.cc/160?img=14",bio:"building weird things",v:false},
+    {u:"ece",n:"Ece",a:"https://i.pravatar.cc/160?img=25",bio:"slow mornings, loud playlists",v:true}
+  ];
+
+  var posts = [
+    {id:"p1",u:"selin",a:users[0].a,img:"https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=85",cap:"Bazen sadece yola çıkmak gerekiyor. 🌿",loc:"Kaş, Antalya",likes:2421,comments:["çok güzel olmuş ✨","renkler mükemmel","buraya gitmem lazım"]},
+    {id:"p2",u:"deniz.wav",a:users[2].a,img:"https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1200&q=85",cap:"03:17 — hâlâ bit üzerinde çalışıyorum.",loc:"studio",likes:793,comments:["drop ittt","bu vibe >>>"]},
+    {id:"p3",u:"mert.jpg",a:users[1].a,img:"https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1200&q=85",cap:"şehir yukarıdan daha sessiz.",loc:"İstanbul",likes:5108,comments:["harika kare","lens?","şehir başka görünüyor"]},
+    {id:"p4",u:"lina",a:users[3].a,img:"https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1200&q=85",cap:"workspace reset ♡",loc:"home",likes:1802,comments:["çok iyi","masa setup link?"]},
+    {id:"p5",u:"ece",a:users[5].a,img:"https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=1200&q=85",cap:"dün gece.",loc:"live",likes:6340,comments:["enerjiye bak","wish i was there"]},
+    {id:"p6",u:"arda.dev",a:users[4].a,img:"https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=85",cap:"bugün sadece build. sonra yine build.",loc:"somewhere online",likes:907,comments:["ship it","çok gerçek"]},
+    {id:"p7",u:"selin",a:users[0].a,img:"https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=85",cap:"hafta sonu plansızlığı",loc:"İzmir",likes:2788,comments:["fav","çok tatlı"]},
+    {id:"p8",u:"mert.jpg",a:users[1].a,img:"https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=85",cap:"street light.",loc:"Nişantaşı",likes:3204,comments:["clean","🔥"]}
+  ];
+  var userPosts = stored.userPosts || [
+    {id:"u1",u:"ametrix",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1200&q=85",cap:"new era loading…",loc:"",likes:1480,comments:["we are ready","👀"]},
+    {id:"u2",u:"ametrix",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1471478331149-c72f17e33c73?auto=format&fit=crop&w=1200&q=85",cap:"midnight mix.",loc:"",likes:2331,comments:["sounds like a hit"]},
+    {id:"u3",u:"ametrix",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=1200&q=85",cap:"work in progress",loc:"",likes:1994,comments:["release when?"]},
+    {id:"u4",u:"ametrix",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=1200&q=85",cap:"lights.",loc:"",likes:4088,comments:["insane"]},
+    {id:"u5",u:"ametrix",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=85",cap:"crowd energy",loc:"",likes:5101,comments:["🔥🔥🔥"]},
+    {id:"u6",u:"ametrix",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1475275166152-f1e8005f9854?auto=format&fit=crop&w=1200&q=85",cap:"after hours",loc:"",likes:1709,comments:["vibe"]},
+    {id:"u7",u:"ametrix",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1524650359799-842906ca1c06?auto=format&fit=crop&w=1200&q=85",cap:"one more take",loc:"",likes:2200,comments:["this one"]},
+    {id:"u8",u:"ametrix",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=85",cap:"see you soon",loc:"",likes:6177,comments:["OMGG"]}
+  ];
+
+  var state = {
+    liked: stored.liked || {},
+    saved: stored.saved || {},
+    followed: stored.followed || {},
+    comments: stored.comments || {},
+    messages: stored.messages || {},
+    profile: stored.profile || {name:"Ametrix",username:"ametrix",bio:"music • code • late night ideas ✦\\ncreating things on the internet"}
+  };
+
+  function persist(){
+    localStorage.setItem(storeKey, JSON.stringify({
+      liked:state.liked,saved:state.saved,followed:state.followed,comments:state.comments,messages:state.messages,userPosts:userPosts,profile:state.profile
+    }));
+  }
+  function esc(s){ return String(s || "").replace(/[&<>"']/g,function(m){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#039;"}[m]; }); }
+  function toast(t){
+    var el=$("#toast"); el.textContent=t; el.classList.add("show");
+    clearTimeout(window.__toast); window.__toast=setTimeout(function(){ el.classList.remove("show"); },1800);
+  }
+  function fmt(n){ if(n>=1000000)return (n/1000000).toFixed(1)+"M"; if(n>=1000)return (n/1000).toFixed(n>=10000?0:1)+"K"; return n; }
+
+  function showView(name){
+    $$(".view").forEach(function(v){v.classList.remove("active");});
+    var v=$("#"+name+"View"); if(v)v.classList.add("active");
+    $$(".nav-btn[data-view],.bottom-nav button[data-view]").forEach(function(b){b.classList.toggle("active",b.getAttribute("data-view")===name);});
+    $("#notificationPanel").classList.remove("show");
+    window.scrollTo({top:0,behavior:"smooth"});
+    if(name==="profile") renderProfile();
+    if(name==="dm") renderChats();
+  }
+  $$("[data-view]").forEach(function(b){b.addEventListener("click",function(){showView(b.getAttribute("data-view"));});});
+
+  var storyData = [
+    {u:"Sen",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=900&q=85",mine:true},
+    {u:"selin",a:users[0].a,img:"https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=85"},
+    {u:"mert.jpg",a:users[1].a,img:"https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=900&q=85"},
+    {u:"deniz.wav",a:users[2].a,img:"https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=900&q=85"},
+    {u:"lina",a:users[3].a,img:"https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=900&q=85"},
+    {u:"arda.dev",a:users[4].a,img:"https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=85"},
+    {u:"ece",a:users[5].a,img:"https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=900&q=85"}
+  ];
+  function renderStories(){
+    $("#stories").innerHTML=storyData.map(function(s,i){
+      return '<div class="story" data-story="'+i+'"><div class="story-ring"><img src="'+s.a+'" alt=""><span class="'+(s.mine?"story-plus":"")+'">'+(s.mine?'<i class="fa-solid fa-plus"></i>':'')+'</span></div><div class="story-name">'+esc(s.u)+'</div></div>';
+    }).join("");
+    $$("[data-story]").forEach(function(el){el.onclick=function(){openStory(+el.getAttribute("data-story"));};});
+  }
+  var storyIndex=0;
+  function openStory(i){
+    storyIndex=i; renderStoryModal(); $("#storyModal").classList.add("show");
+  }
+  function renderStoryModal(){
+    var s=storyData[storyIndex], modal=$("#storyModal");
+    modal.innerHTML='<div class="story-card"><img class="story-bg" src="'+s.img+'" alt=""><div class="story-overlay"></div><div class="story-progress">'+storyData.map(function(x,i){return '<span class="'+(i<storyIndex?"done":i===storyIndex?"active":"")+'"></span>';}).join("")+'</div><div class="story-top"><img class="avatar" src="'+s.a+'" alt=""><b>'+esc(s.u)+'</b><span class="tiny">• şimdi</span><button class="story-close" id="storyClose"><i class="fa-solid fa-xmark"></i></button></div><div class="story-nav"><button id="storyPrev" aria-label="Önceki"></button><button id="storyNext" aria-label="Sonraki"></button></div><div class="story-reply"><input placeholder="Mesaj gönder..."><button class="icon-btn" style="border-color:rgba(255,255,255,.25);background:rgba(0,0,0,.28)"><i class="fa-regular fa-heart"></i></button></div></div>';
+    $("#storyClose").onclick=function(){modal.classList.remove("show");};
+    $("#storyPrev").onclick=function(){storyIndex=Math.max(0,storyIndex-1);renderStoryModal();};
+    $("#storyNext").onclick=function(){ if(storyIndex>=storyData.length-1){modal.classList.remove("show");}else{storyIndex++;renderStoryModal();} };
+    clearTimeout(window.__story); window.__story=setTimeout(function(){ if(modal.classList.contains("show")) $("#storyNext").click(); },5000);
+  }
+
+  function postCard(p){
+    var liked=!!state.liked[p.id], saved=!!state.saved[p.id];
+    var extra=(state.comments[p.id]||[]).length;
+    return '<article class="post" data-post="'+p.id+'"><div class="post-head"><img class="avatar" src="'+p.a+'" alt=""><div><div class="post-user">'+esc(p.u)+' '+((p.u==="selin"||p.u==="deniz.wav"||p.u==="ametrix")?'<i class="fa-solid fa-circle-check verified"></i>':'')+'</div><div class="post-meta">'+esc(p.loc||"")+'</div></div><button class="more"><i class="fa-solid fa-ellipsis"></i></button></div><div class="post-media" data-dbl="'+p.id+'"><img src="'+p.img+'" alt=""><div class="double-heart"><i class="fa-solid fa-heart"></i></div></div><div class="post-actions"><button class="like-btn '+(liked?"liked":"")+'" data-like="'+p.id+'"><i class="'+(liked?"fa-solid":"fa-regular")+' fa-heart"></i></button><button class="comment-btn" data-comments="'+p.id+'"><i class="fa-regular fa-comment"></i></button><button class="share-btn" data-share="'+p.id+'"><i class="fa-regular fa-paper-plane"></i></button><button class="save-btn '+(saved?"saved":"")+'" data-save="'+p.id+'"><i class="'+(saved?"fa-solid":"fa-regular")+' fa-bookmark"></i></button></div><div class="post-body"><div class="likes">'+fmt(p.likes+(liked?1:0))+' beğenme</div><div class="caption"><b>'+esc(p.u)+'</b>'+esc(p.cap)+'</div><div class="comments-link" data-comments="'+p.id+'>'+(p.comments.length+extra)+' yorumun tümünü gör</div><div class="time">2 saat önce</div></div></article>';
+  }
+  function allPosts(){ return userPosts.concat(posts); }
+  function renderFeed(mode){
+    var arr = mode==="following" ? posts.filter(function(p){return p.u!=="arda.dev";}).concat(userPosts.slice(0,2)) : posts.concat(userPosts.slice(0,2));
+    $("#feed").innerHTML=arr.map(postCard).join("");
+    bindPostActions();
+  }
+  function findPost(id){ return allPosts().filter(function(p){return p.id===id;})[0] || posts[0]; }
+  function bindPostActions(){
+    $$("[data-like]").forEach(function(b){b.onclick=function(){var id=b.getAttribute("data-like");state.liked[id]=!state.liked[id];persist();renderFeed($(".pill.active").getAttribute("data-feed")); if($("#profileView").classList.contains("active"))renderProfile();};});
+    $$("[data-save]").forEach(function(b){b.onclick=function(){var id=b.getAttribute("data-save");state.saved[id]=!state.saved[id];persist();toast(state.saved[id]?"Kaydedildi":"Kaydedilenlerden çıkarıldı"); b.classList.toggle("saved",state.saved[id]); b.innerHTML='<i class="'+(state.saved[id]?"fa-solid":"fa-regular")+' fa-bookmark"></i>';};});
+    $$("[data-comments]").forEach(function(b){b.onclick=function(){openComments(b.getAttribute("data-comments"));};});
+    $$("[data-share]").forEach(function(b){b.onclick=function(){sharePost(b.getAttribute("data-share"));};});
+    $$("[data-dbl]").forEach(function(el){el.ondblclick=function(){var id=el.getAttribute("data-dbl");state.liked[id]=true;persist();var h=el.querySelector(".double-heart");h.classList.remove("pop");void h.offsetWidth;h.classList.add("pop");};});
+  }
+
+  $$(".pill[data-feed]").forEach(function(b){b.onclick=function(){ $$(".pill[data-feed]").forEach(function(x){x.classList.remove("active");});b.classList.add("active");renderFeed(b.getAttribute("data-feed"));};});
+
+  function renderSuggestions(){
+    $("#suggestions").innerHTML=users.slice(0,5).map(function(u){
+      var f=!!state.followed[u.u];
+      return '<div class="suggestion"><img class="avatar" src="'+u.a+'" alt=""><div class="who"><b>'+esc(u.u)+(u.v?' <i class="fa-solid fa-circle-check verified"></i>':'')+'</b><span class="tiny">'+esc(u.n)+'</span></div><button class="follow-btn '+(f?"following":"")+'" data-follow="'+u.u+'">'+(f?"Takiptesin":"Takip et")+'</button></div>';
+    }).join("");
+    $$("[data-follow]").forEach(function(b){b.onclick=function(){var u=b.getAttribute("data-follow");state.followed[u]=!state.followed[u];persist();renderSuggestions();toast(state.followed[u]?"Takip ediliyor":"Takip bırakıldı");};});
+  }
+
+  var exploreImgs = [
+    "photo-1500530855697-b586d89ba3ee","photo-1519501025264-65ba15a82390","photo-1522202176988-66273c2fd55f","photo-1501386761578-eac5c94b800a","photo-1470229722913-7c0e2dbbafd3","photo-1515886657613-9f3515b0c78f","photo-1492684223066-81342ee5ff30","photo-1483985988355-763728e1935b","photo-1511379938547-c1f69419868d","photo-1497366811353-6870744d04b2","photo-1524650359799-842906ca1c06","photo-1524758631624-e2822e304c36","photo-1506157786151-b8491531f063","photo-1493225457124-a3eb161ffa5f","photo-1475275166152-f1e8005f9854","photo-1497366754035-f200968a6e72","photo-1487412720507-e7ab37603c6f","photo-1504198453319-5ce911bafcde"
+  ];
+  function renderExplore(){
+    exploreImgs.sort(function(){return Math.random()-.5;});
+    $("#exploreGrid").innerHTML=exploreImgs.map(function(id,i){var src="https://images.unsplash.com/"+id+"?auto=format&fit=crop&w=900&q=82";return '<div class="grid-item" data-preview="'+src+'"><img src="'+src+'" loading="lazy" alt=""><div class="grid-hover"><span><i class="fa-solid fa-heart"></i> '+fmt(700+i*383)+'</span><span><i class="fa-solid fa-comment"></i> '+(18+i*7)+'</span></div></div>';}).join("");
+    $$("[data-preview]").forEach(function(g){g.onclick=function(){openImagePreview(g.getAttribute("data-preview"));};});
+  }
+  $("#refreshExplore").onclick=function(){renderExplore();toast("FYP yenilendi");};
+
+  var reelsData = [
+    {u:"ece",a:users[5].a,img:"https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=900&q=86",cap:"POV: şarkı sonunda tam istediğin gibi oldu.",likes:"18.4K"},
+    {u:"mert.jpg",a:users[1].a,img:"https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=86",cap:"city walk / 01:24",likes:"9.2K"},
+    {u:"selin",a:users[0].a,img:"https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=86",cap:"weekend reset 🌱",likes:"32.1K"}
+  ];
+  function renderReels(){
+    $("#reels").innerHTML=reelsData.map(function(r,i){return '<div class="reel"><img src="'+r.img+'" alt=""><div class="reel-shade"></div><div class="reel-info"><div class="reel-user"><img class="avatar" src="'+r.a+'" alt="">'+esc(r.u)+' <button class="secondary" style="padding:6px 10px;background:rgba(0,0,0,.25);color:white;border-color:rgba(255,255,255,.22)">Takip et</button></div><p>'+esc(r.cap)+'</p><div class="tiny" style="color:#ddd"><i class="fa-solid fa-music"></i> original audio · Instrix</div></div><div class="reel-actions"><div><button data-reel-like="'+i+'"><i class="fa-regular fa-heart"></i></button><div class="reel-count">'+r.likes+'</div></div><div><button><i class="fa-regular fa-comment"></i></button><div class="reel-count">'+(204+i*99)+'</div></div><div><button data-reel-share="'+i+'"><i class="fa-regular fa-paper-plane"></i></button></div><div><button><i class="fa-solid fa-ellipsis"></i></button></div></div></div>';}).join("");
+    $$("[data-reel-like]").forEach(function(b){b.onclick=function(){var i=b.querySelector("i");i.classList.toggle("fa-regular");i.classList.toggle("fa-solid");b.style.color=i.classList.contains("fa-solid")?"#ff3b6b":"";};});
+    $$("[data-reel-share]").forEach(function(b){b.onclick=function(){toast("Clip bağlantısı kopyalandı");};});
+  }
+
+  var chats = [
+    {u:"selin",a:users[0].a,preview:"tamam sonra yazarsın ✨",online:true},
+    {u:"deniz.wav",a:users[2].a,preview:"mix'i dinledin mi?",online:true},
+    {u:"mert.jpg",a:users[1].a,preview:"fotoğrafları attım",online:false},
+    {u:"lina",a:users[3].a,preview:"HAHAH evet",online:false},
+    {u:"ece",a:users[5].a,preview:"yarın?",online:true}
+  ];
+  var activeChat="selin";
+  var seedMessages={
+    "selin":[{me:false,t:"bugün ne yapıyorsun?",time:"10:21"},{me:true,t:"biraz çalışıp sonra müzikle uğraşırım",time:"10:23"},{me:false,t:"tamam sonra yazarsın ✨",time:"10:24"}],
+    "deniz.wav":[{me:false,t:"yeni mix hazır",time:"Dün"},{me:false,t:"mix'i dinledin mi?",time:"Dün"}],
+    "mert.jpg":[{me:false,t:"fotoğrafları attım",time:"Pzt"}],
+    "lina":[{me:true,t:"bu cidden oldu mu 😭",time:"Paz"},{me:false,t:"HAHAH evet",time:"Paz"}],
+    "ece":[{me:false,t:"yarın?",time:"Cum"}]
+  };
+  function messagesFor(u){ return (seedMessages[u]||[]).concat(state.messages[u]||[]); }
+  function renderChats(){
+    $("#chatList").innerHTML=chats.map(function(c,i){return '<div class="chat-row '+(activeChat===c.u?"active":"")+'" data-chat="'+c.u+'"><img class="avatar" src="'+c.a+'" alt=""><div class="chat-copy"><b>'+c.u+'</b><div class="chat-preview">'+esc(c.preview)+'</div></div>'+(i<3?'<span class="unread"></span>':'')+'</div>';}).join("");
+    $$("[data-chat]").forEach(function(r){r.onclick=function(){activeChat=r.getAttribute("data-chat");$("#dmWrap").classList.add("chat-open");renderChats();renderActiveChat();};});
+    renderActiveChat();
+  }
+  function renderActiveChat(){
+    var c=chats.filter(function(x){return x.u===activeChat;})[0]||chats[0];
+    $("#chatHead").innerHTML='<button class="icon-btn chat-back" id="chatBack" style="display:none;width:36px;height:36px"><i class="fa-solid fa-arrow-left"></i></button><img class="avatar" src="'+c.a+'" alt=""><div><b>'+c.u+'</b><div class="tiny">'+(c.online?"Şimdi aktif":"Bugün aktifti")+'</div></div><div style="margin-left:auto;display:flex;gap:6px"><button class="icon-btn" style="width:36px;height:36px"><i class="fa-solid fa-phone"></i></button><button class="icon-btn" style="width:36px;height:36px"><i class="fa-solid fa-video"></i></button></div>';
+    var msgs=messagesFor(activeChat);
+    $("#chatMessages").innerHTML=msgs.map(function(m){return '<div class="msg '+(m.me?"me":"them")+'">'+esc(m.t)+'<div class="msg-time">'+esc(m.time||"şimdi")+'</div></div>';}).join("");
+    $("#chatMessages").scrollTop=$("#chatMessages").scrollHeight;
+    var back=$("#chatBack"); if(back)back.onclick=function(){$("#dmWrap").classList.remove("chat-open");};
+  }
+  function sendMessage(){
+    var input=$("#messageInput"), text=input.value.trim(); if(!text)return;
+    if(!state.messages[activeChat])state.messages[activeChat]=[];
+    state.messages[activeChat].push({me:true,t:text,time:"şimdi"});input.value="";persist();renderActiveChat();
+    setTimeout(function(){ if(!state.messages[activeChat])state.messages[activeChat]=[]; state.messages[activeChat].push({me:false,t:"gördüm 👀",time:"şimdi"});persist();renderActiveChat(); },900);
+  }
+  $("#sendBtn").onclick=sendMessage;
+  $("#messageInput").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}});
+
+  function renderProfile(tab){
+    tab=tab||($(".profile-tab.active")?$(".profile-tab.active").getAttribute("data-profile-tab"):"posts");
+    $("#profileUsername").textContent=state.profile.username;
+    $("#profileName").textContent=state.profile.name;
+    $("#profileBio").innerHTML=esc(state.profile.bio).replace(/\\n/g,"<br>");
+    $("#postCount").textContent=userPosts.length;
+    var arr=tab==="saved"?allPosts().filter(function(p){return state.saved[p.id];}):tab==="tagged"?posts.slice(2,6):userPosts;
+    if(!arr.length){$("#profileGrid").innerHTML='<div class="empty" style="grid-column:1/-1"><i class="fa-regular fa-bookmark"></i><div>Burada henüz bir şey yok.</div></div>';return;}
+    $("#profileGrid").innerHTML=arr.map(function(p){return '<div class="grid-item" data-preview="'+p.img+'"><img src="'+p.img+'" alt=""><div class="grid-hover"><span><i class="fa-solid fa-heart"></i> '+fmt(p.likes+(state.liked[p.id]?1:0))+'</span><span><i class="fa-solid fa-comment"></i> '+((p.comments||[]).length+(state.comments[p.id]||[]).length)+'</span></div></div>';}).join("");
+    $$("[data-preview]").forEach(function(g){g.onclick=function(){openImagePreview(g.getAttribute("data-preview"));};});
+  }
+  $$(".profile-tab").forEach(function(t){t.onclick=function(){$$(".profile-tab").forEach(function(x){x.classList.remove("active");});t.classList.add("active");renderProfile(t.getAttribute("data-profile-tab"));};});
+
+  function renderSearch(q){
+    q=(q||"").toLowerCase().trim();
+    var all=[{u:state.profile.username,n:state.profile.name,a:"https://i.pravatar.cc/160?img=12",bio:state.profile.bio,v:true}].concat(users);
+    var res=all.filter(function(x){return !q||x.u.toLowerCase().indexOf(q)>-1||x.n.toLowerCase().indexOf(q)>-1||x.bio.toLowerCase().indexOf(q)>-1;});
+    $("#searchResults").innerHTML=res.map(function(u){return '<div class="person-card"><img class="avatar" src="'+u.a+'" alt=""><div class="who"><b>'+esc(u.u)+(u.v?' <i class="fa-solid fa-circle-check verified"></i>':'')+'</b><span>'+esc(u.n)+' · '+esc(u.bio).slice(0,55)+'</span></div><button class="secondary">'+(u.u===state.profile.username?"Profil":"Görüntüle")+'</button></div>';}).join("");
+  }
+  $("#bigSearch").addEventListener("input",function(){renderSearch(this.value);});
+  $("#topSearch").addEventListener("keydown",function(e){if(e.key==="Enter"){showView("search");$("#bigSearch").value=this.value;renderSearch(this.value);$("#bigSearch").focus();}});
+
+  var notifData=[
+    {u:"selin",a:users[0].a,t:"gönderini beğendi.",time:"2 dk",thumb:userPosts[0].img},
+    {u:"deniz.wav",a:users[2].a,t:"seni takip etmeye başladı.",time:"18 dk"},
+    {u:"mert.jpg",a:users[1].a,t:"yorum yaptı: “this is so good”",time:"1 sa",thumb:userPosts[1].img},
+    {u:"ece",a:users[5].a,t:"hikayeni beğendi.",time:"3 sa"}
+  ];
+  function renderNotifications(){
+    $("#notifications").innerHTML=notifData.map(function(n){return '<div class="notif"><img class="avatar" src="'+n.a+'" alt=""><div class="notif-copy"><b>'+esc(n.u)+'</b> '+esc(n.t)+'<div class="notif-time">'+n.time+'</div></div>'+(n.thumb?'<img class="thumb" src="'+n.thumb+'" alt="">':'<button class="follow-btn">Takip et</button>')+'</div>';}).join("");
+  }
+  function toggleNotifications(){$("#notificationPanel").classList.toggle("show");}
+  $("#notifBtn").onclick=toggleNotifications;$("#notifSide").onclick=toggleNotifications;
+
+  function openModal(id){$("#"+id).classList.add("show");}
+  function closeModal(id){$("#"+id).classList.remove("show");}
+  $$("[data-close]").forEach(function(b){b.onclick=function(){closeModal(b.getAttribute("data-close"));};});
+  $$(".modal").forEach(function(m){m.addEventListener("click",function(e){if(e.target===m)m.classList.remove("show");});});
+  $("#createSide").onclick=function(){openModal("createModal");};
+  $("#createMobile").onclick=function(){openModal("createModal");};
+  $("#editProfileBtn").onclick=function(){
+    $("#editName").value=state.profile.name;$("#editUsername").value=state.profile.username;$("#editBio").value=state.profile.bio;openModal("editProfileModal");
+  };
+
+  var postImageData="";
+  $("#postFile").addEventListener("change",function(){
+    var f=this.files&&this.files[0]; if(!f)return;
+    var r=new FileReader(); r.onload=function(){postImageData=r.result;$("#postPreview").innerHTML='<img src="'+postImageData+'" alt="">';};r.readAsDataURL(f);
+  });
+  $("#postUrl").addEventListener("input",function(){var u=this.value.trim();if(u)$("#postPreview").innerHTML='<img src="'+esc(u)+'" alt="" onerror="this.parentNode.innerHTML=\\'<span>Görsel yüklenemedi</span>\\'">';});
+  $("#sharePostBtn").onclick=function(){
+    var img=postImageData||$("#postUrl").value.trim(); if(!img){toast("Önce bir fotoğraf seç");return;}
+    var cap=$("#postCaption").value.trim()||"new post ✦";
+    userPosts.unshift({id:"local-"+Date.now(),u:state.profile.username,a:"https://i.pravatar.cc/160?img=12",img:img,cap:cap,loc:$("#postLocation").value.trim(),likes:0,comments:[]});
+    persist(); closeModal("createModal"); $("#postCaption").value="";$("#postLocation").value="";$("#postUrl").value="";$("#postFile").value="";postImageData="";$("#postPreview").innerHTML='<span><i class="fa-regular fa-image"></i> Fotoğraf önizlemesi</span>';renderProfile();showView("profile");toast("Gönderin paylaşıldı");
+  };
+  $("#saveProfileBtn").onclick=function(){
+    state.profile.name=$("#editName").value.trim()||"Ametrix";state.profile.username=$("#editUsername").value.trim().replace(/\\s+/g,".")||"ametrix";state.profile.bio=$("#editBio").value.trim();persist();closeModal("editProfileModal");renderProfile();toast("Profil güncellendi");
+  };
+
+  var currentCommentPost=null;
+  function openComments(id){
+    currentCommentPost=id;var p=findPost(id);var arr=(p.comments||[]).concat(state.comments[id]||[]);
+    $("#commentList").innerHTML=arr.map(function(c,i){var a=i%2?users[1].a:users[3].a;return '<div class="suggestion"><img class="avatar" src="'+a+'" alt=""><div class="who"><b>'+(i%2?"mert.jpg":"lina")+'</b><span style="display:block;font-size:13px;margin-top:3px">'+esc(c)+'</span></div><button class="follow-btn"><i class="fa-regular fa-heart"></i></button></div>';}).join("") || '<div class="empty">İlk yorumu sen yap.</div>';
+    openModal("commentsModal");
+  }
+  $("#sendCommentBtn").onclick=function(){var t=$("#commentInput").value.trim();if(!t||!currentCommentPost)return;if(!state.comments[currentCommentPost])state.comments[currentCommentPost]=[];state.comments[currentCommentPost].push(t);$("#commentInput").value="";persist();openComments(currentCommentPost);};
+  $("#commentInput").addEventListener("keydown",function(e){if(e.key==="Enter")$("#sendCommentBtn").click();});
+
+  function sharePost(id){
+    var url=location.href.split("#")[0]+"#post-"+id;
+    if(navigator.share){navigator.share({title:"Instrix",text:"Bu gönderiye bak",url:url}).catch(function(){});}
+    else if(navigator.clipboard){navigator.clipboard.writeText(url);toast("Bağlantı kopyalandı");}
+    else toast("Paylaşım bağlantısı hazır");
+  }
+  function openImagePreview(src){
+    var m=$("#storyModal");m.innerHTML='<div class="story-card" style="height:min(720px,86vh);background:#111"><img class="story-bg" src="'+src+'" alt=""><button class="story-close" id="previewClose" style="position:absolute;top:14px;right:14px"><i class="fa-solid fa-xmark"></i></button></div>';m.classList.add("show");$("#previewClose").onclick=function(){m.classList.remove("show");};
+  }
+
+  $("#themeBtn").onclick=function(){toast("Instrix şu an gece temasında");};
+  document.addEventListener("keydown",function(e){if(e.key==="Escape"){$$(".modal.show").forEach(function(m){m.classList.remove("show");});$("#notificationPanel").classList.remove("show");}});
+  document.addEventListener("click",function(e){if(!e.target.closest("#notificationPanel")&&!e.target.closest("#notifBtn")&&!e.target.closest("#notifSide"))$("#notificationPanel").classList.remove("show");});
+
+  renderStories();renderFeed("forYou");renderSuggestions();renderExplore();renderReels();renderChats();renderProfile();renderSearch("");renderNotifications();
+})();
+</script>
+</body>
+</html>
