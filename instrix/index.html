@@ -845,25 +845,47 @@ async function uploadMedia(file,folder){
 }
 
 function openComposer(type){
-  composerType=type||"post";qa("[data-composer]").forEach(function(x){x.classList.toggle("active",x.getAttribute("data-composer")===composerType)});
-  q("#locationField").classList.toggle("hidden",composerType==="story");q("#mediaPreview").innerHTML='<span><i class="fa-regular fa-image"></i> Fotoğraf veya video seç</span>';q("#mediaFile").value="";q("#composerCaption").value="";q("#composerLocation").value="";openModal("composerModal")
+  composerType=type||"post";
+  qa("[data-composer]").forEach(function(x){x.classList.toggle("active",x.getAttribute("data-composer")===composerType)});
+  q("#locationField").classList.toggle("hidden",composerType==="story");
+  q("#mediaFile").multiple=composerType!=="story";
+  q("#mediaPreview").innerHTML='<span><i class="fa-regular fa-image"></i> '+(composerType==="story"?"Fotoğraf veya video seç":"1-10 fotoğraf/video seç")+'</span>';
+  q("#mediaFile").value="";q("#composerCaption").value="";q("#composerLocation").value="";openModal("composerModal")
 }
 q("#createSide").onclick=function(){openComposer("post")};q("#createMobile").onclick=function(){openComposer("post")};
-qa("[data-composer]").forEach(function(x){x.onclick=function(){composerType=x.getAttribute("data-composer");qa("[data-composer]").forEach(function(y){y.classList.toggle("active",y===x)});q("#locationField").classList.toggle("hidden",composerType==="story")}});
+qa("[data-composer]").forEach(function(x){x.onclick=function(){
+  composerType=x.getAttribute("data-composer");
+  qa("[data-composer]").forEach(function(y){y.classList.toggle("active",y===x)});
+  q("#locationField").classList.toggle("hidden",composerType==="story");
+  q("#mediaFile").multiple=composerType!=="story";
+  q("#mediaFile").value="";
+  q("#mediaPreview").innerHTML='<span><i class="fa-regular fa-image"></i> '+(composerType==="story"?"Fotoğraf veya video seç":"1-10 fotoğraf/video seç")+'</span>'
+}});
 q("#mediaFile").addEventListener("change",function(){
-  var f=this.files[0];if(!f)return;var url=URL.createObjectURL(f);q("#mediaPreview").innerHTML=f.type.indexOf("video")===0?'<video src="'+url+'" controls></video>':'<img src="'+url+'" alt="">'
+  var files=Array.from(this.files||[]).slice(0,composerType==="story"?1:10);if(!files.length)return;
+  q("#mediaPreview").innerHTML='<div class="preview-list">'+files.map(function(f){var url=URL.createObjectURL(f);return f.type.indexOf("video")===0?'<video src="'+url+'" controls muted></video>':'<img src="'+url+'" alt="">' }).join("")+'</div>'
 });
 q("#publishBtn").onclick=async function(){
-  var file=q("#mediaFile").files[0];if(!file)return toast("Önce fotoğraf veya video seç.");
+  var files=Array.from(q("#mediaFile").files||[]).slice(0,composerType==="story"?1:10);if(!files.length)return toast("Önce fotoğraf veya video seç.");
   var btn=this;setBusy(btn,true,"Paylaş");
   try{
-    var url=await uploadMedia(file,composerType==="story"?"stories":"posts"),type=file.type.indexOf("video")===0?"video":"image";
-    if(composerType==="story"){
-      var s=await db.from("instrix_stories").insert({user_id:user.id,media_url:url,media_type:type,caption:q("#composerCaption").value.trim()});if(s.error)throw s.error
-    }else{
-      var p=await db.from("instrix_posts").insert({user_id:user.id,media_url:url,media_type:type,caption:q("#composerCaption").value.trim(),location:q("#composerLocation").value.trim()||null});if(p.error)throw p.error
+    var uploaded=[];
+    for(var i=0;i<files.length;i++){
+      var file=files[i],url=await uploadMedia(file,composerType==="story"?"stories":"posts");
+      uploaded.push({media_url:url,media_type:file.type.indexOf("video")===0?"video":"image",position:i})
     }
-    closeModal("composerModal");toast(composerType==="story"?"Hikâyen yayınlandı":"Gönderin yayınlandı");if(composerType==="story")await loadStories();else await loadFeed()
+    var first=uploaded[0];
+    if(composerType==="story"){
+      var st=await db.from("instrix_stories").insert({user_id:user.id,media_url:first.media_url,media_type:first.media_type,caption:q("#composerCaption").value.trim()});
+      if(st.error)throw st.error
+    }else{
+      var pr=await db.from("instrix_posts").insert({user_id:user.id,media_url:first.media_url,media_type:first.media_type,caption:q("#composerCaption").value.trim(),location:q("#composerLocation").value.trim()||null}).select().single();
+      if(pr.error)throw pr.error;
+      var rows=uploaded.map(function(m){return{post_id:pr.data.id,user_id:user.id,media_url:m.media_url,media_type:m.media_type,position:m.position}});
+      var pm=await db.from("instrix_post_media").insert(rows);if(pm.error)throw pm.error
+    }
+    closeModal("composerModal");toast(composerType==="story"?"Hikâyen yayınlandı":"Gönderin yayınlandı");
+    if(composerType==="story")await loadStories();else await loadFeed()
   }catch(e){toast(e.message||"Yükleme başarısız")}finally{setBusy(btn,false,"Paylaş")}
 };
 
