@@ -470,13 +470,28 @@ async function showView(name,scroll){
   qa(".view").forEach(function(v){v.classList.remove("active")});var target=q("#"+name+"View");if(target)target.classList.add("active");
   qa("[data-view]").forEach(function(b){b.classList.toggle("active",b.getAttribute("data-view")===name)});
   if(scroll!==false)window.scrollTo({top:0,behavior:"smooth"});
-  if(name==="home")await Promise.all([loadStories(),loadFeed(),loadSuggestions()]);
-  if(name==="search")await renderSearch("");
-  if(name==="explore")await loadExplore();
-  if(name==="reels")await loadReels();
-  if(name==="dm")await loadConversations();
-  if(name==="notifications")await loadNotifications();
-  if(name==="profile"){profileId=profileId||user.id;await loadProfile(profileId,profileTab)}
+  try{
+    if(name==="home")await Promise.all([loadStories(),loadFeed(),loadSuggestions()]);
+    if(name==="search")await renderSearch("");
+    if(name==="explore")await loadExplore();
+    if(name==="reels")await loadReels();
+    if(name==="dm")await loadConversations();
+    if(name==="notifications")await loadNotifications();
+    if(name==="profile"){if(!profileId)profileId=user.id;await loadProfile(profileId,profileTab)}
+  }catch(err){
+    console.error("Instrix view error",name,err);
+    toast("Bu bölüm yenilenirken hata oldu. Tekrar deniyorum…");
+    setTimeout(function(){if(currentView===name)refreshCurrentView()},500)
+  }
+}
+async function refreshCurrentView(){
+  if(currentView==="home")return Promise.all([loadStories(),loadFeed(),loadSuggestions()]);
+  if(currentView==="search")return renderSearch(q("#searchInput").value||"");
+  if(currentView==="explore")return loadExplore();
+  if(currentView==="reels")return loadReels();
+  if(currentView==="dm")return loadConversations(true);
+  if(currentView==="notifications")return loadNotifications();
+  if(currentView==="profile")return loadProfile(profileId||user.id,profileTab);
 }
 
 qa("[data-view]").forEach(function(b){b.addEventListener("click",function(){var v=b.getAttribute("data-view");if(v==="profile")profileId=user.id;if(v==="dm")currentConversation=null;showView(v)})});
@@ -621,14 +636,15 @@ async function loadComments(){
   loading("#commentsList");
   var r=await db.from("instrix_comments").select("*").eq("post_id",currentCommentPost).order("created_at",{ascending:true});
   if(r.error){empty("#commentsList","fa-solid fa-triangle-exclamation","Yorumlar yüklenemedi",r.error.message);return}
-  var arr=r.data||[],pmap=await getProfiles(arr.map(function(x){return x.user_id}));
+  var arr=r.data||[];
   if(!arr.length){empty("#commentsList","fa-regular fa-comment","Henüz yorum yok","İlk yorumu sen yap.");return}
+  var pmap=await getProfiles(arr.map(function(x){return x.user_id}));
   var lr=await db.from("instrix_comment_likes").select("comment_id,user_id").in("comment_id",arr.map(function(x){return x.id}));
   var count={},mine={};(lr.data||[]).forEach(function(x){count[x.comment_id]=(count[x.comment_id]||0)+1;if(x.user_id===user.id)mine[x.comment_id]=true});
   var byId={};arr.forEach(function(c){byId[c.id]=c});
   q("#commentsList").innerHTML=arr.map(function(c){
-    var p=pmap[c.user_id]||{},parent=c.parent_id&&byId[c.parent_id],parentUser=parent&&pmap[parent.user_id];
-    return'<div class="comment-row '+(c.parent_id?"comment-reply":"")+'"><img class="avatar" src="'+avatar(p)+'" alt=""><div class="comment-copy"><div><b data-profile="'+(p.id||"")+'>'+safe(p.username||"kullanici")+'</b> '+(parentUser?'<span class="tiny">↪ @'+safe(parentUser.username)+' </span>':'')+richText(c.body)+'</div><div class="comment-tools"><span>'+ago(c.created_at)+'</span><button data-reply-comment="'+c.id+'" data-reply-user="'+safe(p.username||"kullanici")+'">Yanıtla</button><button data-like-comment="'+c.id+'" class="'+(mine[c.id]?"liked":"")+'"><i class="'+(mine[c.id]?"fa-solid":"fa-regular")+' fa-heart"></i> '+(count[c.id]||0)+'</button></div></div></div>'
+    var p=pmap[c.user_id]||{id:c.user_id,username:"kullanici"},parent=c.parent_id&&byId[c.parent_id],parentUser=parent&&pmap[parent.user_id];
+    return'<div class="comment-row '+(c.parent_id?"comment-reply":"")+'"><img class="avatar" src="'+avatar(p)+'" alt=""><div class="comment-copy"><div><b data-profile="'+safe(p.id||"")+'>'+safe(p.username||"kullanici")+'</b> '+(parentUser?'<span class="tiny">↪ @'+safe(parentUser.username)+' </span>':'')+richText(c.body)+'</div><div class="comment-tools"><span>'+ago(c.created_at)+'</span><button data-reply-comment="'+c.id+'" data-reply-user="'+safe(p.username||"kullanici")+'">Yanıtla</button><button data-like-comment="'+c.id+'" class="'+(mine[c.id]?"liked":"")+'"><i class="'+(mine[c.id]?"fa-solid":"fa-regular")+' fa-heart"></i> '+(count[c.id]||0)+'</button></div></div></div>'
   }).join("");
   qa("[data-reply-comment]").forEach(function(x){x.onclick=function(){currentReplyTo={id:x.getAttribute("data-reply-comment"),username:x.getAttribute("data-reply-user")};syncReplyBar();q("#commentInput").focus()}});
   qa("[data-like-comment]").forEach(function(x){x.onclick=function(){toggleCommentLike(x.getAttribute("data-like-comment"))}});
@@ -641,9 +657,16 @@ async function toggleCommentLike(commentId){
 }
 q("#sendCommentBtn").onclick=async function(){
   var body=q("#commentInput").value.trim();if(!body||!currentCommentPost)return;
+  var btn=q("#sendCommentBtn");btn.disabled=true;
   var payload={post_id:currentCommentPost,user_id:user.id,body:body,parent_id:currentReplyTo?currentReplyTo.id:null};
-  var r=await db.from("instrix_comments").insert(payload);if(r.error)return toast(r.error.message);
-  q("#commentInput").value="";currentReplyTo=null;syncReplyBar();await loadComments();cache.commentsCount[currentCommentPost]=(cache.commentsCount[currentCommentPost]||0)+1
+  var r=await db.from("instrix_comments").insert(payload).select().single();
+  btn.disabled=false;
+  if(r.error)return toast("Yorum gönderilemedi: "+r.error.message);
+  q("#commentInput").value="";currentReplyTo=null;syncReplyBar();
+  await loadComments();
+  var cc=await db.from("instrix_comments").select("*",{count:"exact",head:true}).eq("post_id",currentCommentPost);
+  qa('[data-comment="'+currentCommentPost+'"]').forEach(function(el){if(el.classList.contains("comments-link"))el.textContent=(cc.count||0)+" yorumun tümünü gör"});
+  toast("Yorum eklendi")
 };
 q("#commentInput").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();q("#sendCommentBtn").click()}});
 
@@ -926,11 +949,11 @@ async function loadReels(){
 }
 
 async function loadProfile(id,tab){
-  profileId=id;profileTab=tab||"posts";loading("#profileHead");loading("#profileGrid");
-  var pr=await db.from("instrix_profiles").select("*").eq("id",id).single();
-  if(pr.error){empty("#profileHead","fa-regular fa-user","Profil bulunamadı","Bu hesap mevcut olmayabilir veya aranızda engel olabilir.");q("#profileGrid").innerHTML="";return}
+  id=id||user.id;profileId=id;profileTab=tab||"posts";loading("#profileHead");loading("#profileGrid");
+  var pr=id===user.id?{data:me,error:null}:await db.from("instrix_profiles").select("*").eq("id",id).single();
+  if(pr.error||!pr.data){empty("#profileHead","fa-regular fa-user","Profil bulunamadı",pr.error?pr.error.message:"Profil okunamadı");q("#profileGrid").innerHTML="";return}
   var p=pr.data;cache.profiles[p.id]=p;
-  var counts=await Promise.all([
+  var countResults=await Promise.all([
     db.from("instrix_posts").select("*",{count:"exact",head:true}).eq("user_id",id),
     db.from("instrix_follows").select("*",{count:"exact",head:true}).eq("following_id",id),
     db.from("instrix_follows").select("*",{count:"exact",head:true}).eq("follower_id",id)
@@ -948,7 +971,7 @@ async function loadProfile(id,tab){
     '<div class="profile-actions"><button id="editProfileBtn" class="secondary">Profili düzenle</button></div>':
     '<div class="profile-actions"><button class="primary" data-follow="'+p.id+'">'+followText+'</button><button class="secondary" data-message-user="'+p.id+'">Mesaj</button><button class="secondary" data-user-actions="'+p.id+'"><i class="fa-solid fa-ellipsis"></i></button></div>';
   q("#profileHead").innerHTML='<div class="profile-head"><img class="avatar-lg" src="'+avatar(p)+'" alt=""><div><div class="profile-top"><h2>'+safe(p.username)+(p.is_verified?' <i class="fa-solid fa-circle-check verified"></i>':'')+(p.is_private?' <i class="fa-solid fa-lock tiny"></i>':'')+'</h2>'+actions+
-  '</div><div class="stats"><span><b>'+fmt(counts[0].count||0)+'</b> gönderi</span><span><b>'+fmt(counts[1].count||0)+'</b> takipçi</span><span><b>'+fmt(counts[2].count||0)+'</b> takip</span></div><div class="bio"><b>'+safe(p.display_name||p.username)+'</b><br>'+richText(p.bio||"")+(p.website?'<br><a href="'+safe(p.website)+'" target="_blank" rel="noopener" style="color:#a994ff">'+safe(p.website)+'</a>':'')+'</div></div></div>';
+    '</div><div class="stats"><span><b>'+fmt(countResults[0].count||0)+'</b> gönderi</span><span><b>'+fmt(countResults[1].count||0)+'</b> takipçi</span><span><b>'+fmt(countResults[2].count||0)+'</b> takip</span></div><div class="bio"><b>'+safe(p.display_name||p.username)+'</b><br>'+richText(p.bio||"")+(p.website?'<br><a href="'+safe(p.website)+'" target="_blank" rel="noopener" style="color:#a994ff">'+safe(p.website)+'</a>':'')+'</div></div></div>';
   q("#savedTab").classList.toggle("hidden",!own);
   qa(".profile-tab").forEach(function(x){x.classList.toggle("active",x.getAttribute("data-profile-tab")===(tab||"posts"))});
   if(q("#editProfileBtn"))q("#editProfileBtn").onclick=openEditProfile;
@@ -958,15 +981,30 @@ async function loadProfile(id,tab){
   if(p.is_private&&!own&&!following){
     q("#profileGrid").innerHTML='<div class="private-box" style="grid-column:1/-1"><i class="fa-solid fa-lock"></i><h3>Bu hesap gizli</h3><div>Gönderileri görmek için takip isteğinin kabul edilmesi gerekiyor.</div></div>';return
   }
-  var posts=[];
+
+  var posts=[],postError=null;
   if(tab==="saved"&&own){
     var sv=await db.from("instrix_saved_posts").select("post_id").eq("user_id",user.id).order("created_at",{ascending:false});
-    var ids=(sv.data||[]).map(function(x){return x.post_id});if(ids.length){var rr=await db.from("instrix_posts").select("*").in("id",ids);posts=rr.data||[]}
+    if(sv.error)postError=sv.error;
+    var ids=(sv.data||[]).map(function(x){return x.post_id});
+    if(ids.length){
+      var rr=await db.from("instrix_posts").select("*").in("id",ids).order("created_at",{ascending:false});
+      if(rr.error)postError=rr.error;else posts=rr.data||[]
+    }
   }else{
-    var rr2=await db.from("instrix_posts").select("*").eq("user_id",id).order("created_at",{ascending:false});posts=rr2.data||[]
+    var rr2=await db.from("instrix_posts").select("*").eq("user_id",id).order("created_at",{ascending:false});
+    if(rr2.error)postError=rr2.error;else posts=rr2.data||[]
   }
+  if(postError){empty("#profileGrid","fa-solid fa-triangle-exclamation","Gönderiler yüklenemedi",postError.message);return}
   if(!posts.length){empty("#profileGrid","fa-regular fa-images",tab==="saved"?"Kaydedilen yok":"Henüz gönderi yok",tab==="saved"?"Kaydettiğin gönderiler burada görünür.":"İlk gönderi paylaşıldığında burada görünür.");return}
-  q("#profileGrid").innerHTML=posts.map(function(x){return'<div class="grid-item" data-profile-post="'+x.id+'>'+mediaHtml(x)+'</div>'}).join("");
+
+  var mediaRes=await db.from("instrix_post_media").select("*").in("post_id",posts.map(function(x){return x.id})).order("position",{ascending:true});
+  var mediaMap={};(mediaRes.data||[]).forEach(function(m){(mediaMap[m.post_id]||(mediaMap[m.post_id]=[])).push(m)});
+  q("#profileGrid").innerHTML=posts.map(function(x){
+    var mm=mediaMap[x.id]||[],first=mm[0]||{media_url:x.media_url,media_type:x.media_type};
+    var thumb=first.media_type==="video"?'<video src="'+safe(first.media_url)+'" muted playsinline preload="metadata"></video>':'<img src="'+safe(first.media_url)+'" alt="">';
+    return'<div class="grid-item" data-profile-post="'+x.id+'>'+thumb+(mm.length>1?'<span style="position:absolute;right:8px;top:8px;text-shadow:0 2px 6px #000"><i class="fa-solid fa-clone"></i></span>':'')+'</div>'
+  }).join("");
   qa("[data-profile-post]").forEach(function(x){x.onclick=function(){openPostDetail(x.getAttribute("data-profile-post"))}})
 }
 
@@ -1226,6 +1264,7 @@ q("#createGroupBtn").onclick=async function(){
 async function loadNotifications(){
   loading("#notificationsList");
   var r=await db.from("instrix_notifications").select("*").eq("recipient_id",user.id).order("created_at",{ascending:false}).limit(100);
+  if(r.error){empty("#notificationsList","fa-solid fa-triangle-exclamation","Bildirimler yüklenemedi",r.error.message);return}
   var arr=r.data||[],pmap=await getProfiles(arr.map(function(n){return n.actor_id}));
   if(!arr.length){empty("#notificationsList","fa-regular fa-heart","Henüz bildirim yok","Beğeni, yorum, takip, mention ve mesaj bildirimleri burada görünür.");updateNotifBadge(0);return}
   function notifText(n){
@@ -1241,13 +1280,14 @@ async function loadNotifications(){
     return n.text||"yeni bir etkileşim gönderdi."
   }
   q("#notificationsList").innerHTML=arr.map(function(n){
-    var p=pmap[n.actor_id]||{},actions=n.kind==="follow_request"?'<div style="display:flex;gap:7px;margin-top:7px"><button class="primary" style="padding:7px 10px" data-follow-accept="'+n.actor_id+'">Kabul et</button><button class="secondary" style="padding:7px 10px" data-follow-reject="'+n.actor_id+'">Sil</button></div>':'';
-    return'<div class="notif-row '+(!n.is_read?"unread":"")+'"><img class="avatar" src="'+avatar(p)+'" alt=""><div class="row-copy"><div><b data-profile="'+(p.id||"")+'>'+safe(p.username||"Instrix")+'</b> '+safe(notifText(n))+'</div><span>'+ago(n.created_at)+'</span>'+actions+'</div></div>'
+    var p=pmap[n.actor_id]||{id:n.actor_id,username:"Instrix"},actions=n.kind==="follow_request"?'<div style="display:flex;gap:7px;margin-top:7px"><button class="primary" style="padding:7px 10px" data-follow-accept="'+n.actor_id+'">Kabul et</button><button class="secondary" style="padding:7px 10px" data-follow-reject="'+n.actor_id+'">Sil</button></div>':'';
+    return'<div class="notif-row '+(!n.is_read?"unread":"")+'"><img class="avatar" src="'+avatar(p)+'" alt=""><div class="row-copy"><div><b '+(p.id?'data-profile="'+p.id+'"':'')+'>'+safe(p.username||"Instrix")+'</b> '+safe(notifText(n))+'</div><span>'+ago(n.created_at)+'</span>'+actions+'</div></div>'
   }).join("");
   qa("[data-follow-accept]").forEach(function(b){b.onclick=function(){respondFollowRequest(b.getAttribute("data-follow-accept"),true)}});
   qa("[data-follow-reject]").forEach(function(b){b.onclick=function(){respondFollowRequest(b.getAttribute("data-follow-reject"),false)}});
   bindProfileLinksAndFollows();updateNotifBadge(arr.filter(function(n){return!n.is_read}).length)
 }
+
 async function respondFollowRequest(requester,accept){
   var rr=await db.from("instrix_follow_requests").select("*").eq("requester_id",requester).eq("target_id",user.id).eq("status","pending").maybeSingle();
   if(!rr.data)return toast("Takip isteği artık aktif değil.");
@@ -1259,7 +1299,15 @@ function updateNotifBadge(n){var b=q("#notifBadge");b.textContent=String(n);b.cl
 async function subscribeNotifications(){
   var cnt=await db.from("instrix_notifications").select("*",{count:"exact",head:true}).eq("recipient_id",user.id).eq("is_read",false);updateNotifBadge(cnt.count||0);
   if(notifChannel)await db.removeChannel(notifChannel);
-  notifChannel=db.channel("instrix-notif-"+user.id).on("postgres_changes",{event:"INSERT",schema:"public",table:"instrix_notifications",filter:"recipient_id=eq."+user.id},function(){db.from("instrix_notifications").select("*",{count:"exact",head:true}).eq("recipient_id",user.id).eq("is_read",false).then(function(x){updateNotifBadge(x.count||0)});if(currentView==="notifications")loadNotifications()}).subscribe()
+  notifChannel=db.channel("instrix-notif-"+user.id).on("postgres_changes",{event:"INSERT",schema:"public",table:"instrix_notifications",filter:"recipient_id=eq."+user.id},function(payload){
+    db.from("instrix_notifications").select("*",{count:"exact",head:true}).eq("recipient_id",user.id).eq("is_read",false).then(function(x){updateNotifBadge(x.count||0)});
+    if(payload&&payload.new){
+      var n=payload.new;
+      var label=n.kind==="message"?"Yeni mesaj":n.kind==="comment"?"Yeni yorum":n.kind==="like"?"Yeni beğeni":n.kind==="follow"||n.kind==="follow_request"?"Yeni takip bildirimi":"Yeni bildirim";
+      toast(label)
+    }
+    if(currentView==="notifications")loadNotifications()
+  }).subscribe()
 }
 
 function richText(text){
