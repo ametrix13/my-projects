@@ -632,10 +632,14 @@ async function openStorySet(arr,prof){
   if(!arr.length)return;var idx=0;openModal("storyModal");
   async function render(){
     var s=arr[idx];await db.from("instrix_story_views").upsert({story_id:s.id,viewer_id:user.id},{onConflict:"story_id,viewer_id"});
-    q("#storyModal").innerHTML='<div class="story-viewer">'+mediaHtml(s)+'<div class="story-overlay"></div><div class="story-top"><img class="avatar" src="'+avatar(prof)+'" alt=""><b>'+safe(prof.username||"kullanici")+'</b><span class="tiny" style="color:#ddd">'+ago(s.created_at)+'</span><button class="story-close" id="storyClose"><i class="fa-solid fa-xmark"></i></button></div><div class="story-reply"><input id="storyReply" placeholder="Mesaj gönder..."><button id="storyNext" class="icon-btn" style="background:rgba(0,0,0,.3);border-color:rgba(255,255,255,.25)"><i class="fa-solid fa-chevron-right"></i></button></div></div>';
+    var own=s.user_id===user.id;
+    q("#storyModal").innerHTML='<div class="story-viewer">'+mediaHtml(s)+'<div class="story-overlay"></div><div class="story-top"><img class="avatar" src="'+avatar(prof)+'" alt=""><b>'+safe(prof.username||"kullanici")+'</b><span class="tiny" style="color:#ddd">'+ago(s.created_at)+'</span><button class="story-close" id="storyClose"><i class="fa-solid fa-xmark"></i></button></div>'+
+      (own?'<button class="story-viewers-btn" id="storyViewersBtn"><i class="fa-regular fa-eye"></i> Görüntüleyenler</button>':'')+
+      '<div class="story-reply">'+(own?'<input disabled value="Kendi hikâyen">':'<input id="storyReply" placeholder="Mesaj gönder...">')+'<button id="storyNext" class="icon-btn" style="background:rgba(0,0,0,.3);border-color:rgba(255,255,255,.25)"><i class="fa-solid fa-chevron-right"></i></button></div></div>';
     q("#storyClose").onclick=function(){closeModal("storyModal")};
     q("#storyNext").onclick=function(){if(idx<arr.length-1){idx++;render()}else closeModal("storyModal")};
-    q("#storyReply").addEventListener("keydown",async function(e){if(e.key==="Enter"){var t=this.value.trim();if(!t)return;var c=await startConversation(prof.id,false);if(c){await db.from("instrix_messages").insert({conversation_id:c.id,sender_id:user.id,body:t});toast("Hikâyeye cevap gönderildi");this.value=""}}})
+    if(q("#storyViewersBtn"))q("#storyViewersBtn").onclick=function(){showStoryViewers(s.id)};
+    if(q("#storyReply"))q("#storyReply").addEventListener("keydown",async function(e){if(e.key==="Enter"){var t=this.value.trim();if(!t)return;var c=await startConversation(prof.id,false);if(c){await db.from("instrix_messages").insert({conversation_id:c.id,sender_id:user.id,body:t});toast("Hikâyeye cevap gönderildi");this.value=""}}})
   }
   await render()
 }
@@ -654,10 +658,24 @@ function bindProfileLinksAndFollows(){
 }
 async function toggleFollow(other,btn){
   var existing=await db.from("instrix_follows").select("following_id").eq("follower_id",user.id).eq("following_id",other).maybeSingle();
-  if(existing.data){var d=await db.from("instrix_follows").delete().eq("follower_id",user.id).eq("following_id",other);if(d.error)return toast(d.error.message);toast("Takip bırakıldı")}
-  else{var i=await db.from("instrix_follows").insert({follower_id:user.id,following_id:other});if(i.error)return toast(i.error.message);toast("Takip ediliyor")}
-  if(btn){var on=!existing.data;btn.textContent=on?"Takiptesin":"Takip et";btn.classList.toggle("following",on)}
-  if(currentView==="profile")await loadProfile(profileId,profileTab)
+  if(existing.data){
+    var d=await db.from("instrix_follows").delete().eq("follower_id",user.id).eq("following_id",other);
+    if(d.error)return toast(d.error.message);toast("Takip bırakıldı")
+  }else{
+    var pr=cache.profiles[other]?{data:cache.profiles[other]}:await db.from("instrix_profiles").select("*").eq("id",other).single();
+    if(pr.error)return toast(pr.error.message);
+    if(pr.data.is_private){
+      var req=await db.from("instrix_follow_requests").select("*").eq("requester_id",user.id).eq("target_id",other).eq("status","pending").maybeSingle();
+      if(req.data){
+        var cd=await db.from("instrix_follow_requests").delete().eq("id",req.data.id);if(cd.error)return toast(cd.error.message);toast("Takip isteği iptal edildi")
+      }else{
+        var cr=await db.from("instrix_follow_requests").insert({requester_id:user.id,target_id:other});if(cr.error)return toast(cr.error.message);toast("Takip isteği gönderildi")
+      }
+    }else{
+      var i=await db.from("instrix_follows").insert({follower_id:user.id,following_id:other});if(i.error)return toast(i.error.message);toast("Takip ediliyor")
+    }
+  }
+  if(currentView==="profile")await loadProfile(profileId,profileTab);else if(btn)await loadSuggestions()
 }
 
 async function renderSearch(term){
@@ -675,16 +693,72 @@ q("#searchInput").addEventListener("input",function(){clearTimeout(window.__sear
 q("#topSearch").addEventListener("keydown",function(e){if(e.key==="Enter"){showView("search");q("#searchInput").value=this.value;renderSearch(this.value)}});
 
 async function loadExplore(){
+  qa("[data-explore-tab]").forEach(function(x){x.classList.toggle("active",x.getAttribute("data-explore-tab")===exploreMode)});
+  q("#exploreInternal").classList.toggle("hidden",exploreMode!=="instrix");
+  q("#exploreExternal").classList.toggle("hidden",exploreMode!=="external");
+  q("#exploreTitle").textContent=exploreMode==="external"?"Dışarıdan keşfet":"Senin için";
+  if(exploreMode==="external"){await loadExternalFeed();return}
   loading("#exploreGrid");
   var r=await db.from("instrix_posts").select("*").order("created_at",{ascending:false}).limit(80);
   var arr=(r.data||[]).sort(function(){return Math.random()-.5});
-  if(!arr.length){empty("#exploreGrid","fa-regular fa-compass","Keşfet henüz boş","Gönderiler paylaşıldıkça burada görünür.");return}
+  if(!arr.length){empty("#exploreGrid","fa-regular fa-compass","Instrix keşfeti henüz boş","Instagram + TikTok sekmesinde public içerikleri kaynak platformdan görüntüleyebilirsin.");return}
   var likes=await db.from("instrix_post_likes").select("post_id").in("post_id",arr.map(function(x){return x.id}));
   var lc={};(likes.data||[]).forEach(function(x){lc[x.post_id]=(lc[x.post_id]||0)+1});
   q("#exploreGrid").innerHTML=arr.map(function(p){return'<div class="grid-item" data-open-post="'+p.id+'>'+mediaHtml(p)+'<div class="grid-hover"><span><i class="fa-solid fa-heart"></i> '+fmt(lc[p.id]||0)+'</span></div></div>'}).join("");
   qa("[data-open-post]").forEach(function(x){x.onclick=function(){showView("home");setTimeout(function(){var el=q('[data-post="'+x.getAttribute("data-open-post")+'"]');if(el)el.scrollIntoView({behavior:"smooth",block:"center"})},350)}})
 }
+qa("[data-explore-tab]").forEach(function(x){x.onclick=function(){exploreMode=x.getAttribute("data-explore-tab");loadExplore()}});
 q("#refreshExplore").onclick=loadExplore;
+
+function parseExternalUrl(raw){
+  var url=(raw||"").trim();
+  try{
+    var u=new URL(url),host=u.hostname.replace(/^www\./,"").toLowerCase();
+    if(host==="tiktok.com"){
+      var m=u.pathname.match(/\/video\/(\d+)/);if(!m)return null;
+      return{provider:"tiktok",url:"https://www.tiktok.com"+u.pathname.replace(/\/$/,""),external_id:m[1]}
+    }
+    if(host==="instagram.com"){
+      var im=u.pathname.match(/^\/(reel|p|tv)\/([A-Za-z0-9_-]+)/);if(!im)return null;
+      return{provider:"instagram",url:"https://www.instagram.com/"+im[1]+"/"+im[2]+"/",external_id:im[2]}
+    }
+  }catch(e){}
+  return null
+}
+function externalEmbedHtml(x){
+  if(x.provider==="tiktok"&&x.external_id){
+    return'<iframe class="embed-frame" src="https://www.tiktok.com/player/v1/'+encodeURIComponent(x.external_id)+'?autoplay=0&controls=1&description=1&music_info=1" allow="fullscreen; autoplay; encrypted-media" loading="lazy" title="TikTok"></iframe>'
+  }
+  if(x.provider==="instagram"){
+    var base=x.url.split("?")[0];if(base.charAt(base.length-1)!=="/")base+="/";
+    return'<iframe class="embed-frame" src="'+safe(base)+'embed/" allow="autoplay; encrypted-media" loading="lazy" title="Instagram"></iframe>'
+  }
+  return''
+}
+async function loadExternalFeed(){
+  loading("#externalFeed");
+  var r=await db.from("instrix_external_posts").select("*").order("is_featured",{ascending:false}).order("created_at",{ascending:false}).limit(30);
+  if(r.error){empty("#externalFeed","fa-solid fa-triangle-exclamation","Dış içerik yüklenemedi",r.error.message);return}
+  var arr=r.data||[];
+  if(!arr.length){empty("#externalFeed","fa-brands fa-tiktok","Henüz bağlantı yok","Public bir TikTok veya Instagram Reel/post bağlantısı ekle.");return}
+  q("#externalFeed").innerHTML=arr.map(function(x){
+    return'<article class="embed-card">'+externalEmbedHtml(x)+'<div class="embed-meta"><b><i class="fa-brands fa-'+(x.provider==="tiktok"?"tiktok":"instagram")+'"></i> '+(x.provider==="tiktok"?"TikTok":"Instagram")+'</b><span class="tiny">'+safe(x.caption||"")+'</span><a href="'+safe(x.url)+'" target="_blank" rel="noopener">Kaynakta aç</a></div>'+
+      (x.added_by===user.id?'<button class="link-btn" data-delete-external="'+x.id+'" style="margin-top:8px;color:#ff8aaa">Kaldır</button>':'')+'</article>'
+  }).join("");
+  qa("[data-delete-external]").forEach(function(b){b.onclick=async function(){var d=await db.from("instrix_external_posts").delete().eq("id",b.getAttribute("data-delete-external"));if(d.error)return toast(d.error.message);loadExternalFeed()}});
+}
+q("#addExternalBtn").onclick=async function(){
+  var parsed=parseExternalUrl(q("#externalUrlInput").value);
+  if(!parsed)return toast("Geçerli public Instagram Reel/post veya TikTok video linki yapıştır.");
+  var ins=await db.from("instrix_external_posts").insert({provider:parsed.provider,url:parsed.url,external_id:parsed.external_id,added_by:user.id,caption:"Instrix topluluğu tarafından eklendi"});
+  if(ins.error){
+    if(String(ins.error.message).toLowerCase().indexOf("duplicate")>=0||String(ins.error.code)==="23505")toast("Bu içerik zaten ekli.");
+    else toast(ins.error.message);
+    return
+  }
+  q("#externalUrlInput").value="";toast("Dış içerik eklendi");await loadExternalFeed()
+};
+q("#externalUrlInput").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();q("#addExternalBtn").click()}});
 
 async function loadReels(){
   loading("#reels");
