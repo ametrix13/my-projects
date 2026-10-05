@@ -594,6 +594,7 @@ async function toggleSave(postId,btn){
   if(on){var r=await db.from("instrix_saved_posts").delete().eq("post_id",postId).eq("user_id",user.id);if(r.error)return toast(r.error.message);cache.saved[postId]=false;toast("Kaydedilenlerden çıkarıldı")}
   else{var r2=await db.from("instrix_saved_posts").insert({post_id:postId,user_id:user.id});if(r2.error)return toast(r2.error.message);cache.saved[postId]=true;toast("Kaydedildi")}
   qa('[data-save="'+postId+'"]').forEach(function(b){b.classList.toggle("saved",!on);b.innerHTML='<i class="'+(!on?"fa-solid":"fa-regular")+' fa-bookmark"></i>'});
+}
 
 async function sharePost(id){
   var url=location.href.split("#")[0]+"#post-"+id;
