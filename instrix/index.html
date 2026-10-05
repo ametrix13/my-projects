@@ -580,20 +580,41 @@ async function deletePost(id){
 }
 
 async function openComments(postId){
-  currentCommentPost=postId;openModal("commentsModal");await loadComments()
+  currentCommentPost=postId;currentReplyTo=null;syncReplyBar();openModal("commentsModal");await loadComments()
 }
+function syncReplyBar(){
+  var bar=q("#replyingBar");if(!bar)return;
+  if(currentReplyTo){bar.classList.add("show");q("#replyingText").textContent="@"+currentReplyTo.username+" kullanıcısına yanıt veriyorsun"}
+  else{bar.classList.remove("show");q("#replyingText").textContent=""}
+}
+q("#cancelReplyBtn").onclick=function(){currentReplyTo=null;syncReplyBar()};
 async function loadComments(){
   loading("#commentsList");
   var r=await db.from("instrix_comments").select("*").eq("post_id",currentCommentPost).order("created_at",{ascending:true});
   if(r.error){empty("#commentsList","fa-solid fa-triangle-exclamation","Yorumlar yüklenemedi",r.error.message);return}
   var arr=r.data||[],pmap=await getProfiles(arr.map(function(x){return x.user_id}));
   if(!arr.length){empty("#commentsList","fa-regular fa-comment","Henüz yorum yok","İlk yorumu sen yap.");return}
-  q("#commentsList").innerHTML=arr.map(function(c){var p=pmap[c.user_id]||{};return'<div class="comment-row"><img class="avatar" src="'+avatar(p)+'" alt=""><div class="comment-copy"><div><b>'+safe(p.username||"kullanici")+'</b>'+safe(c.body)+'</div><div class="tiny">'+ago(c.created_at)+'</div></div></div>'}).join("")
+  var lr=await db.from("instrix_comment_likes").select("comment_id,user_id").in("comment_id",arr.map(function(x){return x.id}));
+  var count={},mine={};(lr.data||[]).forEach(function(x){count[x.comment_id]=(count[x.comment_id]||0)+1;if(x.user_id===user.id)mine[x.comment_id]=true});
+  var byId={};arr.forEach(function(c){byId[c.id]=c});
+  q("#commentsList").innerHTML=arr.map(function(c){
+    var p=pmap[c.user_id]||{},parent=c.parent_id&&byId[c.parent_id],parentUser=parent&&pmap[parent.user_id];
+    return'<div class="comment-row '+(c.parent_id?"comment-reply":"")+'"><img class="avatar" src="'+avatar(p)+'" alt=""><div class="comment-copy"><div><b data-profile="'+(p.id||"")+'>'+safe(p.username||"kullanici")+'</b> '+(parentUser?'<span class="tiny">↪ @'+safe(parentUser.username)+' </span>':'')+richText(c.body)+'</div><div class="comment-tools"><span>'+ago(c.created_at)+'</span><button data-reply-comment="'+c.id+'" data-reply-user="'+safe(p.username||"kullanici")+'">Yanıtla</button><button data-like-comment="'+c.id+'" class="'+(mine[c.id]?"liked":"")+'"><i class="'+(mine[c.id]?"fa-solid":"fa-regular")+' fa-heart"></i> '+(count[c.id]||0)+'</button></div></div></div>'
+  }).join("");
+  qa("[data-reply-comment]").forEach(function(x){x.onclick=function(){currentReplyTo={id:x.getAttribute("data-reply-comment"),username:x.getAttribute("data-reply-user")};syncReplyBar();q("#commentInput").focus()}});
+  qa("[data-like-comment]").forEach(function(x){x.onclick=function(){toggleCommentLike(x.getAttribute("data-like-comment"))}});
+  bindRichLinks();bindProfileLinksAndFollows()
+}
+async function toggleCommentLike(commentId){
+  var e=await db.from("instrix_comment_likes").select("comment_id").eq("comment_id",commentId).eq("user_id",user.id).maybeSingle();
+  var r=e.data?await db.from("instrix_comment_likes").delete().eq("comment_id",commentId).eq("user_id",user.id):await db.from("instrix_comment_likes").insert({comment_id:commentId,user_id:user.id});
+  if(r.error)return toast(r.error.message);await loadComments()
 }
 q("#sendCommentBtn").onclick=async function(){
   var body=q("#commentInput").value.trim();if(!body||!currentCommentPost)return;
-  var r=await db.from("instrix_comments").insert({post_id:currentCommentPost,user_id:user.id,body:body});if(r.error)return toast(r.error.message);
-  q("#commentInput").value="";await loadComments();cache.commentsCount[currentCommentPost]=(cache.commentsCount[currentCommentPost]||0)+1
+  var payload={post_id:currentCommentPost,user_id:user.id,body:body,parent_id:currentReplyTo?currentReplyTo.id:null};
+  var r=await db.from("instrix_comments").insert(payload);if(r.error)return toast(r.error.message);
+  q("#commentInput").value="";currentReplyTo=null;syncReplyBar();await loadComments();cache.commentsCount[currentCommentPost]=(cache.commentsCount[currentCommentPost]||0)+1
 };
 q("#commentInput").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();q("#sendCommentBtn").click()}});
 
