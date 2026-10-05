@@ -112,7 +112,7 @@ linear-gradient(135deg,#10101a,#07070b)}
 .typing-line{font-size:11px;color:#a88dff;min-height:14px}.seen{font-size:9px;opacity:.65;text-align:right;margin-top:3px}
 .group-box{display:grid;gap:12px}.check-row{display:flex;align-items:center;gap:9px;color:#cfcfdb;font-size:13px}.check-row input{width:18px;height:18px}
 .external-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
-.story-viewers-btn{position:absolute;left:16px;bottom:68px;border:1px solid rgba(255,255,255,.28);background:rgba(0,0,0,.3);color:#fff;border-radius:999px;padding:8px 12px;font-size:11px;font-weight:850;cursor:pointer}
+.story-viewers-btn{position:absolute;left:16px;bottom:68px;border:1px solid rgba(255,255,255,.28);background:rgba(0,0,0,.3);color:#fff;border-radius:999px;padding:8px 12px;font-size:11px;font-weight:850;cursor:pointer;z-index:7}
 @media(max-width:740px){.external-feed{grid-template-columns:1fr}.external-add{padding:0 10px}.external-tabs{padding:0 10px}.embed-card{border-left:0;border-right:0;border-radius:0}}
 </style>
 </head>
@@ -397,7 +397,8 @@ function ago(ts){if(!ts)return"";var d=(Date.now()-new Date(ts).getTime())/1000;
 function toast(t){var e=q("#toast");e.textContent=t;e.classList.add("show");clearTimeout(window.__toast);window.__toast=setTimeout(function(){e.classList.remove("show")},1900)}
 function loading(target){q(target).innerHTML='<div class="loading"><div><div class="spinner"></div>Yükleniyor...</div></div>'}
 function empty(target,icon,title,text){q(target).innerHTML='<div class="empty"><i class="'+icon+'"></i><h3>'+safe(title)+'</h3><div>'+safe(text)+'</div></div>'}
-function stopStoryTimers(){if(storyTimer){clearTimeout(storyTimer);storyTimer=null}if(storyTick){clearInterval(storyTick);storyTick=null}if(storyKeyHandler){document.removeEventListener("keydown",storyKeyHandler);storyKeyHandler=null}}
+function clearStoryProgressTimers(){if(storyTimer){clearTimeout(storyTimer);storyTimer=null}if(storyTick){clearInterval(storyTick);storyTick=null}}
+function stopStoryTimers(){clearStoryProgressTimers();if(storyKeyHandler){document.removeEventListener("keydown",storyKeyHandler);storyKeyHandler=null}}
 function closeModal(id){if(id==="storyModal")stopStoryTimers();q("#"+id).classList.remove("show")}
 function openModal(id){q("#"+id).classList.add("show")}
 function setBusy(btn,busy,label){if(!btn)return;btn.disabled=busy;if(label)btn.textContent=busy?"İşleniyor...":label}
@@ -681,7 +682,7 @@ async function openStorySet(arr,prof,startIndex){
   }
 
   function startProgress(durationMs){
-    stopStoryTimers();
+    clearStoryProgressTimers();
     var fill=q("#storyCurrentFill");if(!fill)return;
     var started=Date.now(),duration=Math.max(1200,durationMs||6000);
     storyTick=setInterval(function(){
@@ -899,7 +900,7 @@ async function loadReels(){
     var ext=await db.from("instrix_external_posts").select("*").in("provider",["tiktok","instagram"]).order("is_featured",{ascending:false}).order("created_at",{ascending:false}).limit(12);
     var ea=ext.data||[];
     if(!ea.length){empty("#reels","fa-solid fa-play","Henüz Clip yok","Video paylaşabilir veya Keşfet'ten public TikTok / Instagram içeriği ekleyebilirsin.");return}
-    q("#reels").innerHTML=ea.map(function(x){return'<div class="reel" style="display:grid;place-items:center;padding:10px">'+externalEmbedHtml(x)+'</div>'}).join("");return
+    q("#reels").innerHTML=ea.map(function(x){return'<div class="reel" style="display:grid;place-items:center;padding:10px">'+externalEmbedHtml(x)+'</div>'}).join("");setTimeout(refreshTikTokEmbeds,80);return
   }
   var pmap=await getProfiles(arr.map(function(x){return x.user_id}));
   q("#reels").innerHTML=arr.map(function(p){var pr=pmap[p.user_id]||{};return'<div class="reel"><video src="'+safe(p.media_url)+'" muted loop playsinline controls preload="metadata"></video><div class="reel-shade"></div><div class="reel-info"><b data-profile="'+pr.id+'">@'+safe(pr.username||"kullanici")+'</b><p>'+richText(p.caption||"")+'</p></div><div class="reel-actions"><button data-like="'+p.id+'"><i class="fa-regular fa-heart"></i></button><button data-comment="'+p.id+'"><i class="fa-regular fa-comment"></i></button><button data-share="'+p.id+'"><i class="fa-regular fa-paper-plane"></i></button></div></div>'}).join("");bindPosts();bindRichLinks()
@@ -1021,7 +1022,7 @@ q("#publishBtn").onclick=async function(){
 };
 
 async function loadConversations(skipOpen){
-  loading("#chatList");
+  if(!skipOpen)loading("#chatList");
   var mem=await db.from("instrix_conversation_members").select("conversation_id").eq("user_id",user.id);
   if(mem.error){empty("#chatList","fa-solid fa-triangle-exclamation","Mesajlar yüklenemedi",mem.error.message);return}
   var ids=(mem.data||[]).map(function(x){return x.conversation_id});
@@ -1107,11 +1108,14 @@ async function loadMessages(){
   var isGroup=!!(conv.data&&conv.data.conversation_type==="group");
   var pmap=await getProfiles(arr.map(function(m){return m.sender_id}));
 
-  var unread=arr.filter(function(m){return m.sender_id!==user.id}).map(function(m){return{message_id:m.id,user_id:user.id,read_at:new Date().toISOString()}});
-  if(unread.length)await db.from("instrix_message_reads").upsert(unread,{onConflict:"message_id,user_id"});
+  var messageIds=arr.map(function(m){return m.id});
+  var myReads=await db.from("instrix_message_reads").select("message_id").eq("user_id",user.id).in("message_id",messageIds);
+  var myReadSet={};(myReads.data||[]).forEach(function(x){myReadSet[x.message_id]=true});
+  var unread=arr.filter(function(m){return m.sender_id!==user.id&&!myReadSet[m.id]}).map(function(m){return{message_id:m.id,user_id:user.id,read_at:new Date().toISOString()}});
+  if(unread.length)await db.from("instrix_message_reads").insert(unread);
 
   var reads={};
-  var rr=await db.from("instrix_message_reads").select("*").in("message_id",arr.map(function(m){return m.id}));
+  var rr=await db.from("instrix_message_reads").select("*").in("message_id",messageIds);
   (rr.data||[]).forEach(function(x){if(x.user_id!==user.id)reads[x.message_id]=(reads[x.message_id]||0)+1});
   var lastOwn=null;for(var i=arr.length-1;i>=0;i--){if(arr[i].sender_id===user.id){lastOwn=arr[i].id;break}}
 
