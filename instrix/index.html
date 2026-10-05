@@ -1297,8 +1297,8 @@ async function openPostActions(postId,own){
 }
 
 qa("[data-close]").forEach(function(b){b.onclick=function(){closeModal(b.getAttribute("data-close"))}});
-qa(".modal").forEach(function(m){m.addEventListener("click",function(e){if(e.target===m)m.classList.remove("show")})});
-document.addEventListener("keydown",function(e){if(e.key==="Escape")qa(".modal.show").forEach(function(m){m.classList.remove("show")})});
+qa(".modal").forEach(function(m){m.addEventListener("click",function(e){if(e.target===m)closeModal(m.id)})});
+document.addEventListener("keydown",function(e){if(e.key==="Escape")qa(".modal.show").forEach(function(m){closeModal(m.id)})});
 
 db.auth.onAuthStateChange(function(event,newSession){
   session=newSession;user=newSession&&newSession.user;
