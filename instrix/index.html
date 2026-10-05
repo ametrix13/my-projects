@@ -385,6 +385,7 @@ var session=null,user=null,me=null;
 var currentView="home",feedMode="foryou",profileId=null,profileTab="posts",exploreMode="instrix";
 var currentCommentPost=null,currentReplyTo=null,currentConversation=null,messageChannel=null,notifChannel=null;
 var composerType="post";
+var storyTimer=null,storyTick=null,storyKeyHandler=null,storyTouchStartX=0;
 var cache={profiles:{},posts:[],likes:{},commentsCount:{},saved:{}};
 
 function q(s){return document.querySelector(s)}
@@ -396,7 +397,8 @@ function ago(ts){if(!ts)return"";var d=(Date.now()-new Date(ts).getTime())/1000;
 function toast(t){var e=q("#toast");e.textContent=t;e.classList.add("show");clearTimeout(window.__toast);window.__toast=setTimeout(function(){e.classList.remove("show")},1900)}
 function loading(target){q(target).innerHTML='<div class="loading"><div><div class="spinner"></div>Yükleniyor...</div></div>'}
 function empty(target,icon,title,text){q(target).innerHTML='<div class="empty"><i class="'+icon+'"></i><h3>'+safe(title)+'</h3><div>'+safe(text)+'</div></div>'}
-function closeModal(id){q("#"+id).classList.remove("show")}
+function stopStoryTimers(){if(storyTimer){clearTimeout(storyTimer);storyTimer=null}if(storyTick){clearInterval(storyTick);storyTick=null}if(storyKeyHandler){document.removeEventListener("keydown",storyKeyHandler);storyKeyHandler=null}}
+function closeModal(id){if(id==="storyModal")stopStoryTimers();q("#"+id).classList.remove("show")}
 function openModal(id){q("#"+id).classList.add("show")}
 function setBusy(btn,busy,label){if(!btn)return;btn.disabled=busy;if(label)btn.textContent=busy?"İşleniyor...":label}
 function titleFor(v){return{home:"Ana Sayfa",search:"Ara",explore:"Senin için",reels:"Clips",dm:"Mesajlar",notifications:"Bildirimler",profile:"Profil"}[v]||"Instrix"}
@@ -626,27 +628,105 @@ q("#sendCommentBtn").onclick=async function(){
 q("#commentInput").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();q("#sendCommentBtn").click()}});
 
 async function loadStories(){
-  var r=await db.from("instrix_stories").select("*").order("created_at",{ascending:false}).limit(60);
+  var r=await db.from("instrix_stories").select("*").order("created_at",{ascending:true}).limit(80);
+  if(r.error){q("#stories").innerHTML="";return}
   var stories=r.data||[],pmap=await getProfiles(stories.map(function(s){return s.user_id}));
-  var byUser={};stories.forEach(function(s){if(!byUser[s.user_id])byUser[s.user_id]=[];byUser[s.user_id].push(s)});
-  var mine='<div class="story" id="addStoryQuick"><div class="story-ring"><img src="'+avatar(me)+'" alt=""><span class="story-add"><i class="fa-solid fa-plus"></i></span></div><div class="story-name">Hikâyen</div></div>';
-  var rest=Object.keys(byUser).filter(function(id){return id!==user.id}).map(function(id){var p=pmap[id]||{},s=byUser[id][0];return'<div class="story" data-story-user="'+id+'"><div class="story-ring"><img src="'+avatar(p)+'" alt=""></div><div class="story-name">'+safe(p.username||"kullanici")+'</div></div>'}).join("");
+  var byUser={};
+  stories.forEach(function(st){if(!byUser[st.user_id])byUser[st.user_id]=[];byUser[st.user_id].push(st)});
+  Object.keys(byUser).forEach(function(id){byUser[id].sort(function(a,b){return new Date(a.created_at)-new Date(b.created_at)})});
+  var myStories=byUser[user.id]||[];
+  var mine='<div class="story" id="ownStoryCard"><div class="story-ring"><img src="'+avatar(me)+'" alt=""><span class="story-add" id="addStoryQuick"><i class="fa-solid fa-plus"></i></span></div><div class="story-name">'+(myStories.length?"Hikâyen · "+myStories.length:"Hikâye ekle")+'</div></div>';
+  var rest=Object.keys(byUser).filter(function(id){return id!==user.id}).map(function(id){
+    var p=pmap[id]||{};
+    return'<div class="story" data-story-user="'+id+'"><div class="story-ring"><img src="'+avatar(p)+'" alt=""></div><div class="story-name">'+safe(p.username||"kullanici")+'</div></div>'
+  }).join("");
   q("#stories").innerHTML=mine+rest;
-  q("#addStoryQuick").onclick=function(){composerType="story";openComposer("story")};
-  qa("[data-story-user]").forEach(function(x){x.onclick=function(){openStorySet(byUser[x.getAttribute("data-story-user")]||[],pmap[x.getAttribute("data-story-user")])}})
+  q("#ownStoryCard").onclick=function(){if(myStories.length)openStorySet(myStories,me);else openComposer("story")};
+  q("#addStoryQuick").onclick=function(e){e.stopPropagation();openComposer("story")};
+  qa("[data-story-user]").forEach(function(x){x.onclick=function(){var id=x.getAttribute("data-story-user");openStorySet(byUser[id]||[],pmap[id])}})
 }
-async function openStorySet(arr,prof){
-  if(!arr.length)return;var idx=0;openModal("storyModal");
+function storyMediaHtml(st){
+  if(st.media_type==="video")return'<video id="storyMediaVideo" class="story-media" src="'+safe(st.media_url)+'" playsinline autoplay preload="auto"></video>';
+  return'<img class="story-media" src="'+safe(st.media_url)+'" alt="">'
+}
+async function openStorySet(arr,prof,startIndex){
+  if(!arr||!arr.length)return;
+  arr=arr.slice().sort(function(a,b){return new Date(a.created_at)-new Date(b.created_at)});
+  var idx=Math.max(0,Math.min(arr.length-1,Number(startIndex||0)));
+  openModal("storyModal");
+
+  async function advance(delta){
+    var next=idx+delta;
+    if(next<0){idx=0;await render();return}
+    if(next>=arr.length){closeModal("storyModal");return}
+    idx=next;await render()
+  }
+
+  function startProgress(durationMs){
+    stopStoryTimers();
+    var fill=q("#storyCurrentFill");if(!fill)return;
+    var started=Date.now(),duration=Math.max(1200,durationMs||6000);
+    storyTick=setInterval(function(){
+      var pct=Math.min(100,((Date.now()-started)/duration)*100);
+      if(fill)fill.style.width=pct+"%"
+    },50);
+    storyTimer=setTimeout(function(){advance(1)},duration)
+  }
+
   async function render(){
-    var s=arr[idx],own=s.user_id===user.id;
-    if(!own)await db.from("instrix_story_views").upsert({story_id:s.id,viewer_id:user.id},{onConflict:"story_id,viewer_id"});
-    q("#storyModal").innerHTML='<div class="story-viewer">'+mediaHtml(s)+'<div class="story-overlay"></div><div class="story-top"><img class="avatar" src="'+avatar(prof)+'" alt=""><b>'+safe(prof.username||"kullanici")+'</b><span class="tiny" style="color:#ddd">'+ago(s.created_at)+'</span><button class="story-close" id="storyClose"><i class="fa-solid fa-xmark"></i></button></div>'+
+    stopStoryTimers();
+    var st=arr[idx],own=st.user_id===user.id;
+    if(!own)await db.from("instrix_story_views").upsert({story_id:st.id,viewer_id:user.id},{onConflict:"story_id,viewer_id"});
+
+    var progress=arr.map(function(_,i){
+      return'<div class="story-progress-seg '+(i<idx?"done":"")+'"><div class="story-progress-fill" '+(i===idx?'id="storyCurrentFill"':'')+'></div></div>'
+    }).join("");
+
+    q("#storyModal").innerHTML='<div class="story-viewer" id="storyViewer">'+
+      storyMediaHtml(st)+
+      '<div class="story-overlay"></div><div class="story-progress">'+progress+'</div>'+
+      '<div class="story-tap-zone story-tap-prev" id="storyPrevZone"></div><div class="story-tap-zone story-tap-next" id="storyNextZone"></div>'+
+      '<div class="story-top"><img class="avatar" src="'+avatar(prof)+'" alt=""><b>'+safe((prof&&prof.username)||"kullanici")+'</b><span class="story-counter">'+(idx+1)+'/'+arr.length+'</span><span class="tiny" style="color:#ddd">'+ago(st.created_at)+'</span><button class="story-close" id="storyClose"><i class="fa-solid fa-xmark"></i></button></div>'+
       (own?'<button class="story-viewers-btn" id="storyViewersBtn"><i class="fa-regular fa-eye"></i> Görüntüleyenler</button>':'')+
-      '<div class="story-reply">'+(own?'<input disabled value="Kendi hikâyen">':'<input id="storyReply" placeholder="Mesaj gönder...">')+'<button id="storyNext" class="icon-btn" style="background:rgba(0,0,0,.3);border-color:rgba(255,255,255,.25)"><i class="fa-solid fa-chevron-right"></i></button></div></div>';
-    q("#storyClose").onclick=function(){closeModal("storyModal")};
-    q("#storyNext").onclick=function(){if(idx<arr.length-1){idx++;render()}else closeModal("storyModal")};
-    if(q("#storyViewersBtn"))q("#storyViewersBtn").onclick=function(){showStoryViewers(s.id)};
-    if(q("#storyReply"))q("#storyReply").addEventListener("keydown",async function(e){if(e.key==="Enter"){var t=this.value.trim();if(!t)return;var c=await startConversation(prof.id,false);if(c){await db.from("instrix_messages").insert({conversation_id:c.id,sender_id:user.id,body:t});toast("Hikâyeye cevap gönderildi");this.value=""}}})
+      '<div class="story-reply">'+(own?'<input disabled value="Kendi hikâyen">':'<input id="storyReply" placeholder="Mesaj gönder...">')+'</div></div>';
+
+    q("#storyClose").onclick=function(e){e.stopPropagation();closeModal("storyModal")};
+    q("#storyPrevZone").onclick=function(){advance(-1)};
+    q("#storyNextZone").onclick=function(){advance(1)};
+    if(q("#storyViewersBtn"))q("#storyViewersBtn").onclick=function(e){e.stopPropagation();showStoryViewers(st.id)};
+
+    var viewer=q("#storyViewer");
+    viewer.addEventListener("touchstart",function(e){storyTouchStartX=e.changedTouches&&e.changedTouches[0]?e.changedTouches[0].clientX:0},{passive:true});
+    viewer.addEventListener("touchend",function(e){
+      var x=e.changedTouches&&e.changedTouches[0]?e.changedTouches[0].clientX:storyTouchStartX,dx=x-storyTouchStartX;
+      if(Math.abs(dx)>55){if(dx>0)advance(-1);else advance(1)}
+    },{passive:true});
+
+    storyKeyHandler=function(e){if(e.key==="ArrowRight")advance(1);if(e.key==="ArrowLeft")advance(-1);if(e.key==="Escape")closeModal("storyModal")};
+    document.addEventListener("keydown",storyKeyHandler);
+
+    if(q("#storyReply"))q("#storyReply").addEventListener("keydown",async function(e){
+      if(e.key==="Enter"){
+        e.preventDefault();var t=this.value.trim();if(!t)return;
+        var c=await startConversation(prof.id,false);
+        if(c){await db.from("instrix_messages").insert({conversation_id:c.id,sender_id:user.id,body:t});toast("Hikâyeye cevap gönderildi");this.value=""}
+      }
+    });
+
+    var vid=q("#storyMediaVideo");
+    if(vid){
+      var began=false;
+      function startVideoProgress(){
+        if(began)return;began=true;
+        var dur=isFinite(vid.duration)&&vid.duration>0?Math.min(60000,Math.max(2500,vid.duration*1000)):8000;
+        startProgress(dur)
+      }
+      vid.addEventListener("loadedmetadata",startVideoProgress,{once:true});
+      vid.addEventListener("ended",function(){advance(1)},{once:true});
+      var play=vid.play();
+      if(play&&play.catch)play.catch(function(){vid.muted=true;vid.play().catch(function(){});startVideoProgress()});
+      setTimeout(startVideoProgress,1200)
+    }else startProgress(6000)
   }
   await render()
 }
