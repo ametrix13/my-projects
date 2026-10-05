@@ -489,47 +489,71 @@ async function loadFeed(){
   if(feedMode==="following"){
     var f=await db.from("instrix_follows").select("following_id").eq("follower_id",user.id);
     allowed=(f.data||[]).map(function(x){return x.following_id});allowed.push(user.id);
-    if(!allowed.length){empty("#feed","fa-regular fa-user","Henüz takip yok","Birilerini takip ettiğinde gönderileri burada görünür.");return}
   }
   var query=db.from("instrix_posts").select("*").order("created_at",{ascending:false}).limit(35);
   if(allowed)query=query.in("user_id",allowed);
   var r=await query;if(r.error){empty("#feed","fa-solid fa-triangle-exclamation","Akış yüklenemedi",r.error.message);return}
   var posts=r.data||[];cache.posts=posts;
-  if(!posts.length){empty("#feed","fa-regular fa-images","Akış henüz boş","İlk gönderiyi sen paylaş veya başka hesapları takip et.");return}
-  var ids=posts.map(function(p){return p.id});var pmap=await getProfiles(posts.map(function(p){return p.user_id}));
-  var likes=await db.from("instrix_post_likes").select("post_id,user_id").in("post_id",ids);
-  var comments=await db.from("instrix_comments").select("id,post_id").in("post_id",ids);
-  var saved=await db.from("instrix_saved_posts").select("post_id").eq("user_id",user.id).in("post_id",ids);
-  var lc={},liked={},cc={},sv={};
+  if(!posts.length){
+    q("#feed").innerHTML='<div class="empty"><i class="fa-regular fa-images"></i><h3>Akış henüz boş</h3><div>İlk gönderiyi paylaşabilir ya da Keşfet → Instagram + TikTok bölümünden public içerik ekleyebilirsin.</div><button class="secondary" id="emptyExternalBtn" style="margin-top:14px">Dışarıdan keşfet</button></div>';
+    if(q("#emptyExternalBtn"))q("#emptyExternalBtn").onclick=function(){exploreMode="external";showView("explore")};
+    return
+  }
+  var ids=posts.map(function(p){return p.id});
+  var pmap=await getProfiles(posts.map(function(p){return p.user_id}));
+  var results=await Promise.all([
+    db.from("instrix_post_likes").select("post_id,user_id").in("post_id",ids),
+    db.from("instrix_comments").select("id,post_id").in("post_id",ids),
+    db.from("instrix_saved_posts").select("post_id").eq("user_id",user.id).in("post_id",ids),
+    db.from("instrix_post_media").select("*").in("post_id",ids).order("position",{ascending:true})
+  ]);
+  var likes=results[0],comments=results[1],saved=results[2],media=results[3];
+  var lc={},liked={},cc={},sv={},mm={};
   (likes.data||[]).forEach(function(x){lc[x.post_id]=(lc[x.post_id]||0)+1;if(x.user_id===user.id)liked[x.post_id]=true});
   (comments.data||[]).forEach(function(x){cc[x.post_id]=(cc[x.post_id]||0)+1});
   (saved.data||[]).forEach(function(x){sv[x.post_id]=true});
-  cache.likes=liked;cache.commentsCount=cc;cache.saved=sv;
-  q("#feed").innerHTML=posts.map(function(p){return postHtml(p,pmap[p.user_id],lc[p.id]||0,cc[p.id]||0,liked[p.id],sv[p.id])}).join("");
+  (media.data||[]).forEach(function(x){(mm[x.post_id]||(mm[x.post_id]=[])).push(x)});
+  cache.likes=liked;cache.commentsCount=cc;cache.saved=sv;cache.media=mm;
+  q("#feed").innerHTML=posts.map(function(p){return postHtml(p,pmap[p.user_id],lc[p.id]||0,cc[p.id]||0,liked[p.id],sv[p.id],mm[p.id]||[])}).join("");
   bindPosts();
 }
 
-function mediaHtml(p){
-  if(p.media_type==="video")return'<video src="'+safe(p.media_url)+'" controls playsinline preload="metadata"></video>';
-  return'<img src="'+safe(p.media_url)+'" alt="" loading="lazy">';
+function oneMediaHtml(url,type){
+  if(type==="video")return'<video src="'+safe(url)+'" controls playsinline preload="metadata"></video>';
+  return'<img src="'+safe(url)+'" alt="" loading="lazy">';
 }
-function postHtml(p,prof,likes,comments,liked,saved){
+function mediaHtml(p,mediaArr){
+  var arr=(mediaArr&&mediaArr.length)?mediaArr:[{media_url:p.media_url,media_type:p.media_type,position:0}];
+  if(arr.length===1)return oneMediaHtml(arr[0].media_url,arr[0].media_type);
+  return '<div class="carousel" data-carousel="'+p.id+'" data-index="0"><div class="carousel-track">'+
+    arr.map(function(m){return'<div class="carousel-slide">'+oneMediaHtml(m.media_url,m.media_type)+'</div>'}).join("")+
+    '</div><button class="carousel-nav carousel-prev" data-carousel-prev="'+p.id+'"><i class="fa-solid fa-chevron-left"></i></button><button class="carousel-nav carousel-next" data-carousel-next="'+p.id+'"><i class="fa-solid fa-chevron-right"></i></button><div class="carousel-dots">'+
+    arr.map(function(_,i){return'<span class="carousel-dot '+(i===0?"active":"")+'"></span>'}).join("")+'</div></div>'
+}
+function postHtml(p,prof,likes,comments,liked,saved,mediaArr){
   prof=prof||{id:p.user_id,username:"kullanici",display_name:"",avatar_url:null};
   return'<article class="post" data-post="'+p.id+'">'+
     '<div class="post-head"><img class="avatar" src="'+avatar(prof)+'" alt=""><div><div class="post-user" data-profile="'+prof.id+'>'+safe(prof.username)+(prof.is_verified?' <i class="fa-solid fa-circle-check verified"></i>':'')+'</div><div class="post-meta">'+safe(p.location||"")+'</div></div>'+
-    (p.user_id===user.id?'<button class="more" data-delete-post="'+p.id+'" title="Gönderiyi sil"><i class="fa-solid fa-ellipsis"></i></button>':'<button class="more"><i class="fa-solid fa-ellipsis"></i></button>')+'</div>'+
-    '<div class="post-media">'+mediaHtml(p)+'</div>'+
+    '<button class="more" data-post-actions="'+p.id+'" data-owner="'+(p.user_id===user.id?"1":"0")+'"><i class="fa-solid fa-ellipsis"></i></button></div>'+
+    '<div class="post-media">'+mediaHtml(p,mediaArr)+'</div>'+
     '<div class="post-actions"><button class="'+(liked?"liked":"")+'" data-like="'+p.id+'"><i class="'+(liked?"fa-solid":"fa-regular")+' fa-heart"></i></button><button data-comment="'+p.id+'"><i class="fa-regular fa-comment"></i></button><button data-share="'+p.id+'"><i class="fa-regular fa-paper-plane"></i></button><button class="save '+(saved?"saved":"")+'" data-save="'+p.id+'"><i class="'+(saved?"fa-solid":"fa-regular")+' fa-bookmark"></i></button></div>'+
-    '<div class="post-body"><div class="likes" data-like-count="'+p.id+'>'+fmt(likes)+' beğenme</div><div class="caption"><b>'+safe(prof.username)+'</b>'+safe(p.caption||"")+'</div><div class="comments-link" data-comment="'+p.id+'>'+comments+' yorumun tümünü gör</div><div class="time">'+ago(p.created_at)+'</div></div></article>'
+    '<div class="post-body"><div class="likes" data-like-count="'+p.id+'>'+fmt(likes)+' beğenme</div><div class="caption"><b>'+safe(prof.username)+'</b> '+richText(p.caption||"")+'</div><div class="comments-link" data-comment="'+p.id+'>'+comments+' yorumun tümünü gör</div><div class="time">'+ago(p.created_at)+'</div></div></article>'
 }
 
+function moveCarousel(id,delta){
+  var c=q('[data-carousel="'+id+'"]');if(!c)return;var track=c.querySelector(".carousel-track"),slides=c.querySelectorAll(".carousel-slide"),dots=c.querySelectorAll(".carousel-dot");
+  var i=Number(c.getAttribute("data-index")||0);i=Math.max(0,Math.min(slides.length-1,i+delta));c.setAttribute("data-index",i);track.style.transform="translateX("+(-i*100)+"%)";dots.forEach(function(d,k){d.classList.toggle("active",k===i)})
+}
 function bindPosts(){
   qa("[data-profile]").forEach(function(x){x.onclick=function(){profileId=x.getAttribute("data-profile");profileTab="posts";showView("profile")}});
   qa("[data-like]").forEach(function(x){x.onclick=function(){toggleLike(x.getAttribute("data-like"),x)}});
   qa("[data-save]").forEach(function(x){x.onclick=function(){toggleSave(x.getAttribute("data-save"),x)}});
   qa("[data-comment]").forEach(function(x){x.onclick=function(){openComments(x.getAttribute("data-comment"))}});
   qa("[data-share]").forEach(function(x){x.onclick=function(){sharePost(x.getAttribute("data-share"))}});
-  qa("[data-delete-post]").forEach(function(x){x.onclick=function(){deletePost(x.getAttribute("data-delete-post"))}});
+  qa("[data-post-actions]").forEach(function(x){x.onclick=function(){openPostActions(x.getAttribute("data-post-actions"),x.getAttribute("data-owner")==="1")}});
+  qa("[data-carousel-prev]").forEach(function(x){x.onclick=function(e){e.stopPropagation();moveCarousel(x.getAttribute("data-carousel-prev"),-1)}});
+  qa("[data-carousel-next]").forEach(function(x){x.onclick=function(e){e.stopPropagation();moveCarousel(x.getAttribute("data-carousel-next"),1)}});
+  bindRichLinks();
 }
 
 async function toggleLike(postId,btn){
