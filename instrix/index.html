@@ -763,35 +763,57 @@ q("#externalUrlInput").addEventListener("keydown",function(e){if(e.key==="Enter"
 async function loadReels(){
   loading("#reels");
   var r=await db.from("instrix_posts").select("*").eq("media_type","video").order("created_at",{ascending:false}).limit(30);
-  var arr=r.data||[];if(!arr.length){empty("#reels","fa-solid fa-play","Henüz Clip yok","İlk videoyu paylaşmak için Oluştur'a dokun.");return}
+  var arr=r.data||[];
+  if(!arr.length){
+    var ext=await db.from("instrix_external_posts").select("*").in("provider",["tiktok","instagram"]).order("is_featured",{ascending:false}).order("created_at",{ascending:false}).limit(12);
+    var ea=ext.data||[];
+    if(!ea.length){empty("#reels","fa-solid fa-play","Henüz Clip yok","Video paylaşabilir veya Keşfet'ten public TikTok / Instagram içeriği ekleyebilirsin.");return}
+    q("#reels").innerHTML=ea.map(function(x){return'<div class="reel" style="display:grid;place-items:center;padding:10px">'+externalEmbedHtml(x)+'</div>'}).join("");return
+  }
   var pmap=await getProfiles(arr.map(function(x){return x.user_id}));
-  q("#reels").innerHTML=arr.map(function(p){var pr=pmap[p.user_id]||{};return'<div class="reel"><video src="'+safe(p.media_url)+'" muted loop playsinline controls preload="metadata"></video><div class="reel-shade"></div><div class="reel-info"><b data-profile="'+pr.id+'">@'+safe(pr.username||"kullanici")+'</b><p>'+safe(p.caption||"")+'</p></div><div class="reel-actions"><button data-like="'+p.id+'"><i class="fa-regular fa-heart"></i></button><button data-comment="'+p.id+'"><i class="fa-regular fa-comment"></i></button><button data-share="'+p.id+'"><i class="fa-regular fa-paper-plane"></i></button></div></div>'}).join("");bindPosts()
+  q("#reels").innerHTML=arr.map(function(p){var pr=pmap[p.user_id]||{};return'<div class="reel"><video src="'+safe(p.media_url)+'" muted loop playsinline controls preload="metadata"></video><div class="reel-shade"></div><div class="reel-info"><b data-profile="'+pr.id+'">@'+safe(pr.username||"kullanici")+'</b><p>'+richText(p.caption||"")+'</p></div><div class="reel-actions"><button data-like="'+p.id+'"><i class="fa-regular fa-heart"></i></button><button data-comment="'+p.id+'"><i class="fa-regular fa-comment"></i></button><button data-share="'+p.id+'"><i class="fa-regular fa-paper-plane"></i></button></div></div>'}).join("");bindPosts();bindRichLinks()
 }
 
 async function loadProfile(id,tab){
   profileId=id;profileTab=tab||"posts";loading("#profileHead");loading("#profileGrid");
-  var pr=await db.from("instrix_profiles").select("*").eq("id",id).single();if(pr.error){empty("#profileHead","fa-regular fa-user","Profil bulunamadı",pr.error.message);return}
+  var pr=await db.from("instrix_profiles").select("*").eq("id",id).single();
+  if(pr.error){empty("#profileHead","fa-regular fa-user","Profil bulunamadı","Bu hesap mevcut olmayabilir veya aranızda engel olabilir.");q("#profileGrid").innerHTML="";return}
   var p=pr.data;cache.profiles[p.id]=p;
   var counts=await Promise.all([
     db.from("instrix_posts").select("*",{count:"exact",head:true}).eq("user_id",id),
     db.from("instrix_follows").select("*",{count:"exact",head:true}).eq("following_id",id),
     db.from("instrix_follows").select("*",{count:"exact",head:true}).eq("follower_id",id)
   ]);
-  var own=id===user.id,following=false;
-  if(!own){var fl=await db.from("instrix_follows").select("following_id").eq("follower_id",user.id).eq("following_id",id).maybeSingle();following=!!fl.data}
-  q("#profileHead").innerHTML='<div class="profile-head"><img class="avatar-lg" src="'+avatar(p)+'" alt=""><div><div class="profile-top"><h2>'+safe(p.username)+(p.is_verified?' <i class="fa-solid fa-circle-check verified"></i>':'')+'</h2>'+
-  (own?'<button id="editProfileBtn" class="secondary">Profili düzenle</button>':'<button class="primary" data-follow="'+p.id+'>'+(following?"Takiptesin":"Takip et")+'</button><button class="secondary" data-message-user="'+p.id+'">Mesaj</button>')+
-  '</div><div class="stats"><span><b>'+fmt(counts[0].count||0)+'</b> gönderi</span><span><b>'+fmt(counts[1].count||0)+'</b> takipçi</span><span><b>'+fmt(counts[2].count||0)+'</b> takip</span></div><div class="bio"><b>'+safe(p.display_name||p.username)+'</b><br>'+safe(p.bio||"")+(p.website?'<br><a href="'+safe(p.website)+'" target="_blank" rel="noopener" style="color:#a994ff">'+safe(p.website)+'</a>':'')+'</div></div></div>';
+  var own=id===user.id,following=false,pending=false;
+  if(!own){
+    var status=await Promise.all([
+      db.from("instrix_follows").select("following_id").eq("follower_id",user.id).eq("following_id",id).maybeSingle(),
+      db.from("instrix_follow_requests").select("id").eq("requester_id",user.id).eq("target_id",id).eq("status","pending").maybeSingle()
+    ]);
+    following=!!status[0].data;pending=!!status[1].data
+  }
+  var followText=following?"Takiptesin":pending?"İstek gönderildi":p.is_private?"Takip isteği":"Takip et";
+  var actions=own?
+    '<div class="profile-actions"><button id="editProfileBtn" class="secondary">Profili düzenle</button></div>':
+    '<div class="profile-actions"><button class="primary" data-follow="'+p.id+'">'+followText+'</button><button class="secondary" data-message-user="'+p.id+'">Mesaj</button><button class="secondary" data-user-actions="'+p.id+'"><i class="fa-solid fa-ellipsis"></i></button></div>';
+  q("#profileHead").innerHTML='<div class="profile-head"><img class="avatar-lg" src="'+avatar(p)+'" alt=""><div><div class="profile-top"><h2>'+safe(p.username)+(p.is_verified?' <i class="fa-solid fa-circle-check verified"></i>':'')+(p.is_private?' <i class="fa-solid fa-lock tiny"></i>':'')+'</h2>'+actions+
+  '</div><div class="stats"><span><b>'+fmt(counts[0].count||0)+'</b> gönderi</span><span><b>'+fmt(counts[1].count||0)+'</b> takipçi</span><span><b>'+fmt(counts[2].count||0)+'</b> takip</span></div><div class="bio"><b>'+safe(p.display_name||p.username)+'</b><br>'+richText(p.bio||"")+(p.website?'<br><a href="'+safe(p.website)+'" target="_blank" rel="noopener" style="color:#a994ff">'+safe(p.website)+'</a>':'')+'</div></div></div>';
   q("#savedTab").classList.toggle("hidden",!own);
   qa(".profile-tab").forEach(function(x){x.classList.toggle("active",x.getAttribute("data-profile-tab")===(tab||"posts"))});
   if(q("#editProfileBtn"))q("#editProfileBtn").onclick=openEditProfile;
-  bindProfileLinksAndFollows();
+  bindProfileLinksAndFollows();bindRichLinks();
+  qa("[data-user-actions]").forEach(function(x){x.onclick=function(){openUserActions(x.getAttribute("data-user-actions"))}});
   qa("[data-message-user]").forEach(function(x){x.onclick=async function(){var c=await startConversation(x.getAttribute("data-message-user"),false);if(c){currentConversation=c.id;await showView("dm");await openConversation(c.id)}}});
+  if(p.is_private&&!own&&!following){
+    q("#profileGrid").innerHTML='<div class="private-box" style="grid-column:1/-1"><i class="fa-solid fa-lock"></i><h3>Bu hesap gizli</h3><div>Gönderileri görmek için takip isteğinin kabul edilmesi gerekiyor.</div></div>';return
+  }
   var posts=[];
   if(tab==="saved"&&own){
     var sv=await db.from("instrix_saved_posts").select("post_id").eq("user_id",user.id).order("created_at",{ascending:false});
     var ids=(sv.data||[]).map(function(x){return x.post_id});if(ids.length){var rr=await db.from("instrix_posts").select("*").in("id",ids);posts=rr.data||[]}
-  }else{var rr2=await db.from("instrix_posts").select("*").eq("user_id",id).order("created_at",{ascending:false});posts=rr2.data||[]}
+  }else{
+    var rr2=await db.from("instrix_posts").select("*").eq("user_id",id).order("created_at",{ascending:false});posts=rr2.data||[]
+  }
   if(!posts.length){empty("#profileGrid","fa-regular fa-images",tab==="saved"?"Kaydedilen yok":"Henüz gönderi yok",tab==="saved"?"Kaydettiğin gönderiler burada görünür.":"İlk gönderi paylaşıldığında burada görünür.");return}
   q("#profileGrid").innerHTML=posts.map(function(x){return'<div class="grid-item" data-profile-post="'+x.id+'>'+mediaHtml(x)+'</div>'}).join("");
   qa("[data-profile-post]").forEach(function(x){x.onclick=function(){showView("home");setTimeout(function(){var el=q('[data-post="'+x.getAttribute("data-profile-post")+'"]');if(el)el.scrollIntoView({behavior:"smooth",block:"center"})},350)}})
@@ -800,14 +822,14 @@ async function loadProfile(id,tab){
 qa("[data-profile-tab]").forEach(function(x){x.onclick=function(){profileTab=x.getAttribute("data-profile-tab");loadProfile(profileId,profileTab)}});
 
 function openEditProfile(){
-  q("#editName").value=me.display_name||"";q("#editUsername").value=me.username||"";q("#editBio").value=me.bio||"";q("#editWebsite").value=me.website||"";q("#editAvatar").value="";openModal("editProfileModal")
+  q("#editName").value=me.display_name||"";q("#editUsername").value=me.username||"";q("#editBio").value=me.bio||"";q("#editWebsite").value=me.website||"";q("#editPrivate").checked=!!me.is_private;q("#editAvatar").value="";openModal("editProfileModal")
 }
 q("#saveProfileBtn").onclick=async function(){
   var btn=this;setBusy(btn,true,"Kaydet");
   var avatarUrl=me.avatar_url,file=q("#editAvatar").files[0];
   if(file){try{avatarUrl=await uploadMedia(file,"avatars")}catch(e){setBusy(btn,false,"Kaydet");return toast(e.message)}}
   var username=q("#editUsername").value.trim().toLowerCase().replace(/[^a-z0-9._]/g,"");
-  var up=await db.from("instrix_profiles").update({display_name:q("#editName").value.trim(),username:username,bio:q("#editBio").value.trim(),website:q("#editWebsite").value.trim()||null,avatar_url:avatarUrl}).eq("id",user.id).select().single();
+  var up=await db.from("instrix_profiles").update({display_name:q("#editName").value.trim(),username:username,bio:q("#editBio").value.trim(),website:q("#editWebsite").value.trim()||null,avatar_url:avatarUrl,is_private:q("#editPrivate").checked}).eq("id",user.id).select().single();
   setBusy(btn,false,"Kaydet");if(up.error)return toast(up.error.message);me=up.data;cache.profiles[user.id]=me;syncMeUi();closeModal("editProfileModal");await loadProfile(user.id,"posts");toast("Profil güncellendi")
 };
 q("#logoutBtn").onclick=async function(){await db.auth.signOut();session=null;user=null;me=null;if(messageChannel)await db.removeChannel(messageChannel);if(notifChannel)await db.removeChannel(notifChannel);showAuth()};
