@@ -1145,7 +1145,8 @@ async function openConversation(id){
   messageChannel=db.channel("instrix-chat-"+id)
     .on("postgres_changes",{event:"INSERT",schema:"public",table:"instrix_messages",filter:"conversation_id=eq."+id},function(payload){
       if(payload.new&&payload.new.conversation_id===currentConversation)loadMessages();
-      loadConversations(true)
+      loadConversations(true);
+      if(payload.new&&payload.new.sender_id!==user.id)toast("Yeni mesaj")
     })
     .on("postgres_changes",{event:"*",schema:"public",table:"instrix_message_reads"},function(){if(currentConversation===id)loadMessages()})
     .on("postgres_changes",{event:"*",schema:"public",table:"instrix_typing",filter:"conversation_id=eq."+id},function(){if(currentConversation===id)renderTyping()})
@@ -1205,13 +1206,23 @@ async function setTyping(){
 
 async function sendMessage(){
   var body=q("#messageInput").value.trim();if(!body||!currentConversation)return;
-  var sendBtn=q("#sendMessageBtn");sendBtn.disabled=true;
-  var r=await db.from("instrix_messages").insert({conversation_id:currentConversation,sender_id:user.id,body:body});
+  var sendBtn=q("#sendMessageBtn"),input=q("#messageInput"),tempId="temp-"+Date.now();
+  sendBtn.disabled=true;input.value="";
+  var list=q("#chatMessages");
+  if(list&&list.querySelector(".chat-empty"))list.innerHTML="";
+  if(list){
+    list.insertAdjacentHTML("beforeend",'<div class="msg-line me" data-temp-message="'+tempId+'"><div class="msg-wrap"><div class="msg me">'+safe(body)+'<div class="msg-time">gönderiliyor…</div></div></div></div>');
+    list.scrollTop=list.scrollHeight
+  }
+  var r=await db.from("instrix_messages").insert({conversation_id:currentConversation,sender_id:user.id,body:body}).select().single();
   sendBtn.disabled=false;
-  if(r.error)return toast(r.error.message);
-  q("#messageInput").value="";
+  if(r.error){
+    var temp=q('[data-temp-message="'+tempId+'"]');if(temp)temp.remove();
+    input.value=body;toast("Mesaj gönderilemedi: "+r.error.message);return
+  }
   await db.from("instrix_typing").delete().eq("conversation_id",currentConversation).eq("user_id",user.id);
-  await loadMessages();loadConversations(true)
+  await loadMessages();
+  await loadConversations(true)
 }
 
 q("#sendMessageBtn").onclick=sendMessage;
