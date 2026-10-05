@@ -1,288 +1,169 @@
 <!doctype html>
 <html lang="tr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#0c0c10" />
-  <meta name="description" content="Instrix — paylaş, keşfet, hikayeni anlat ve arkadaşlarınla konuş." />
-  <title>Instrix</title>
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-  <style>
-    :root{
-      --bg:#0b0b0f;--panel:#121218;--panel2:#181820;--text:#f7f7fb;--muted:#8f8fa3;
-      --line:#242430;--accent:#8b5cf6;--accent2:#22c55e;--danger:#ff3b6b;--shadow:0 18px 60px rgba(0,0,0,.35);
-      --radius:22px;--side:250px;
-    }
-    *{box-sizing:border-box}
-    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-    button,input,textarea{font:inherit}
-    button{color:inherit}
-    a{color:inherit;text-decoration:none}
-    ::-webkit-scrollbar{width:10px;height:8px}
-    ::-webkit-scrollbar-thumb{background:#343441;border-radius:99px}
-    .app{min-height:100vh}
-    .sidebar{position:fixed;inset:0 auto 0 0;width:var(--side);border-right:1px solid var(--line);padding:26px 18px;display:flex;flex-direction:column;background:rgba(11,11,15,.95);backdrop-filter:blur(16px);z-index:30}
-    .brand{display:flex;align-items:center;gap:11px;font-size:28px;font-weight:900;letter-spacing:-1.2px;padding:4px 10px 25px}
-    .brand-mark{width:37px;height:37px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#ec4899 55%,var(--accent2));display:grid;place-items:center;box-shadow:0 10px 30px rgba(139,92,246,.28)}
-    .brand-mark:after{content:"X";font-weight:1000;color:white;font-size:20px}
-    .nav{display:grid;gap:7px}
-    .nav-btn{display:flex;align-items:center;gap:14px;width:100%;border:0;background:transparent;padding:13px 14px;border-radius:14px;cursor:pointer;font-weight:700;color:#d7d7e3;text-align:left}
-    .nav-btn i{width:24px;text-align:center;font-size:21px}
-    .nav-btn:hover,.nav-btn.active{background:var(--panel2);color:white}
-    .nav-btn.active i{color:#b9a1ff}
-    .badge{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--danger);display:grid;place-items:center;font-size:11px;color:#fff}
-    .side-foot{margin-top:auto;border-top:1px solid var(--line);padding-top:16px}
-    .mini-user{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;cursor:pointer}
-    .mini-user:hover{background:var(--panel2)}
-    .avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;background:#333;flex:0 0 auto}
-    .tiny{font-size:12px;color:var(--muted)}
-    .main{margin-left:var(--side);min-height:100vh}
-    .topbar{position:sticky;top:0;height:72px;border-bottom:1px solid rgba(36,36,48,.8);display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(11,11,15,.82);backdrop-filter:blur(18px);z-index:20}
-    .mobile-brand{display:none}
-    .searchbox{width:min(440px,46vw);height:44px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;display:flex;align-items:center;gap:10px;padding:0 14px;color:var(--muted)}
-    .searchbox input{flex:1;border:0;outline:none;background:transparent;color:var(--text)}
-    .top-actions{display:flex;gap:8px}
-    .icon-btn{width:42px;height:42px;border:1px solid var(--line);background:var(--panel);border-radius:14px;display:grid;place-items:center;cursor:pointer;position:relative}
-    .icon-btn:hover{background:var(--panel2)}
-    .dot{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--danger);top:7px;right:8px;border:2px solid var(--panel)}
-    .content{max-width:1180px;margin:0 auto;padding:26px 26px 110px}
-    .view{display:none}.view.active{display:block}
-    .feed-shell{display:grid;grid-template-columns:minmax(0,630px) 320px;gap:36px;align-items:start;justify-content:center}
-    .stories{display:flex;gap:14px;overflow:auto;padding:5px 2px 19px;margin-bottom:8px;scrollbar-width:none}
-    .stories::-webkit-scrollbar{display:none}
-    .story{width:76px;flex:0 0 76px;text-align:center;cursor:pointer}
-    .story-ring{width:68px;height:68px;border-radius:50%;padding:3px;background:linear-gradient(135deg,#ff7a00,#ff2e93 48%,#8b5cf6);margin:auto;position:relative}
-    .story-ring.seen{background:#3a3a46}
-    .story-ring img{width:100%;height:100%;object-fit:cover;border-radius:50%;border:3px solid var(--bg)}
-    .story-plus{position:absolute;right:1px;bottom:0;width:21px;height:21px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);display:grid;place-items:center;font-size:12px}
-    .story-name{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:7px;color:#d3d3de}
-    .tabs{display:flex;gap:6px;padding:0 0 16px}
-    .pill{border:1px solid var(--line);background:var(--panel);padding:9px 14px;border-radius:999px;cursor:pointer;font-weight:800;font-size:13px;color:var(--muted)}
-    .pill.active{background:#fff;color:#0c0c10;border-color:#fff}
-    .post{border:1px solid var(--line);background:var(--panel);border-radius:24px;overflow:hidden;margin-bottom:22px;box-shadow:0 10px 35px rgba(0,0,0,.12)}
-    .post-head{display:flex;align-items:center;padding:13px 14px;gap:10px}
-    .post-head .avatar{width:39px;height:39px}
-    .post-user{font-weight:850;font-size:14px}
-    .verified{color:#7c8cff;margin-left:3px;font-size:12px}
-    .post-meta{font-size:11px;color:var(--muted);margin-top:2px}
-    .more{margin-left:auto;background:none;border:0;cursor:pointer;font-size:19px}
-    .post-media{width:100%;aspect-ratio:1/1;position:relative;background:#1c1c24;overflow:hidden}
-    .post-media img{width:100%;height:100%;object-fit:cover;display:block}
-    .double-heart{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;font-size:80px;color:white;opacity:0;transform:scale(.2);filter:drop-shadow(0 8px 28px rgba(0,0,0,.4))}
-    .double-heart.pop{animation:heartpop .68s ease}
-    @keyframes heartpop{0%{opacity:0;transform:scale(.2)}25%{opacity:1;transform:scale(1.18)}55%{opacity:1;transform:scale(.95)}100%{opacity:0;transform:scale(1.28)}}
-    .post-actions{display:flex;align-items:center;gap:4px;padding:10px 11px 6px}
-    .post-actions button{width:39px;height:39px;border:0;background:transparent;border-radius:12px;font-size:21px;cursor:pointer}
-    .post-actions button:hover{background:var(--panel2)}
-    .post-actions .liked{color:var(--danger)}
-    .post-actions .saved{color:#f4d35e}
-    .post-actions .save-btn{margin-left:auto}
-    .post-body{padding:0 14px 15px}
-    .likes{font-weight:850;font-size:13px;margin-bottom:7px}
-    .caption{font-size:14px;line-height:1.45}
-    .caption b{margin-right:5px}
-    .comments-link{color:var(--muted);font-size:13px;margin-top:8px;cursor:pointer}
-    .time{color:#6f6f81;font-size:10px;text-transform:uppercase;margin-top:9px}
-    .right-card{border:1px solid var(--line);background:var(--panel);border-radius:20px;padding:16px;position:sticky;top:94px}
-    .suggest-title{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted);font-weight:850;margin-bottom:8px}
-    .suggestion{display:flex;align-items:center;gap:10px;padding:10px 2px}
-    .suggestion .avatar{width:41px;height:41px}
-    .suggestion .who{min-width:0;flex:1}
-    .suggestion b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .follow-btn{border:0;background:transparent;color:#9f8cff;font-weight:900;font-size:12px;cursor:pointer}
-    .follow-btn.following{color:var(--muted)}
-    .right-links{font-size:11px;line-height:1.8;color:#666679;margin-top:15px}
-    .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
-    .section-head h2{font-size:27px;margin:0;letter-spacing:-.7px}
-    .explore-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;border-radius:18px;overflow:hidden}
-    .grid-item{position:relative;aspect-ratio:1/1;background:#222;cursor:pointer;overflow:hidden}
-    .grid-item:nth-child(8n+1),.grid-item:nth-child(8n+6){grid-row:span 2;aspect-ratio:auto}
-    .grid-item img{width:100%;height:100%;object-fit:cover;transition:transform .3s ease}
-    .grid-item:hover img{transform:scale(1.04)}
-    .grid-hover{position:absolute;inset:0;background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;gap:20px;font-weight:900;opacity:0;transition:.2s}
-    .grid-item:hover .grid-hover{opacity:1}
-    .reels{height:calc(100vh - 118px);overflow-y:auto;scroll-snap-type:y mandatory;border-radius:24px}
-    .reel{height:calc(100vh - 118px);min-height:620px;max-height:850px;scroll-snap-align:start;position:relative;background:#17171f;overflow:hidden;border-radius:24px;margin-bottom:14px}
-    .reel img{width:100%;height:100%;object-fit:cover;filter:brightness(.72)}
-    .reel-shade{position:absolute;inset:0;background:linear-gradient(transparent 55%,rgba(0,0,0,.78))}
-    .reel-info{position:absolute;left:22px;right:90px;bottom:26px}
-    .reel-user{display:flex;align-items:center;gap:9px;font-weight:900}
-    .reel-user .avatar{width:37px;height:37px;border:2px solid white}
-    .reel-info p{font-size:14px;line-height:1.45}
-    .reel-actions{position:absolute;right:17px;bottom:28px;display:grid;gap:12px}
-    .reel-actions button{width:49px;height:49px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.28);backdrop-filter:blur(10px);font-size:20px;cursor:pointer}
-    .reel-count{text-align:center;font-size:11px;font-weight:800;margin-top:4px}
-    .dm-wrap{display:grid;grid-template-columns:330px 1fr;height:calc(100vh - 126px);min-height:620px;border:1px solid var(--line);border-radius:24px;overflow:hidden;background:var(--panel)}
-    .dm-list{border-right:1px solid var(--line);overflow:auto}
-    .dm-list-head{padding:18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
-    .dm-list-head b{font-size:18px}
-    .chat-row{display:flex;gap:11px;padding:13px 16px;cursor:pointer;align-items:center}
-    .chat-row:hover,.chat-row.active{background:var(--panel2)}
-    .chat-row .avatar{width:48px;height:48px}
-    .chat-row .chat-copy{min-width:0;flex:1}
-    .chat-row b{font-size:13px}
-    .chat-preview{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
-    .unread{width:9px;height:9px;background:#8b5cf6;border-radius:50%}
-    .chat-pane{display:flex;flex-direction:column;min-width:0}
-    .chat-head{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
-    .chat-head .avatar{width:40px;height:40px}
-    .chat-messages{flex:1;padding:20px;overflow:auto;display:flex;flex-direction:column;gap:9px;background:radial-gradient(circle at 70% 0,rgba(139,92,246,.08),transparent 32%)}
-    .msg{max-width:min(72%,520px);padding:10px 13px;border-radius:18px;font-size:14px;line-height:1.45}
-    .msg.them{align-self:flex-start;background:var(--panel2);border-bottom-left-radius:5px}
-    .msg.me{align-self:flex-end;background:linear-gradient(135deg,#7c3aed,#9f5cff);color:white;border-bottom-right-radius:5px}
-    .msg-time{font-size:10px;opacity:.62;margin-top:4px}
-    .chat-compose{display:flex;align-items:flex-end;gap:8px;padding:12px;border-top:1px solid var(--line)}
-    .chat-compose textarea{flex:1;resize:none;max-height:120px;min-height:44px;border:1px solid var(--line);border-radius:16px;background:var(--panel2);color:var(--text);outline:none;padding:12px 14px}
-    .send-btn{width:44px;height:44px;border-radius:14px;border:0;background:var(--accent);cursor:pointer}
-    .profile-head{display:grid;grid-template-columns:170px 1fr;gap:34px;align-items:center;padding:24px 22px 36px}
-    .profile-avatar{width:145px;height:145px;border-radius:50%;object-fit:cover;border:1px solid var(--line)}
-    .profile-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-    .profile-top h2{margin:0;font-size:22px}
-    .primary{border:0;background:#fff;color:#0d0d12;font-weight:900;padding:10px 16px;border-radius:12px;cursor:pointer}
-    .secondary{border:1px solid var(--line);background:var(--panel2);font-weight:850;padding:9px 14px;border-radius:12px;cursor:pointer}
-    .stats{display:flex;gap:28px;margin:22px 0 15px;font-size:14px}
-    .stats b{font-size:16px}
-    .bio{font-size:14px;line-height:1.5}
-    .profile-tabs{border-top:1px solid var(--line);display:flex;justify-content:center;gap:44px}
-    .profile-tab{padding:16px 0;border-top:2px solid transparent;margin-top:-1px;color:var(--muted);font-size:12px;font-weight:900;letter-spacing:.6px;cursor:pointer}
-    .profile-tab.active{border-color:#fff;color:#fff}
-    .profile-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
-    .profile-grid .grid-item{aspect-ratio:1/1!important;grid-row:auto!important}
-    .empty{padding:70px 20px;text-align:center;color:var(--muted)}
-    .empty i{font-size:42px;margin-bottom:15px}
-    .notification-panel{position:fixed;right:18px;top:68px;width:min(390px,calc(100vw - 36px));max-height:70vh;overflow:auto;background:rgba(18,18,24,.98);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);z-index:50;display:none}
-    .notification-panel.show{display:block}
-    .panel-title{font-size:18px;font-weight:900;padding:17px;border-bottom:1px solid var(--line)}
-    .notif{display:flex;gap:11px;padding:13px 16px;align-items:center}
-    .notif:hover{background:var(--panel2)}
-    .notif .avatar{width:42px;height:42px}
-    .notif-copy{font-size:13px;line-height:1.4;flex:1}
-    .notif-time{font-size:11px;color:var(--muted)}
-    .thumb{width:44px;height:44px;object-fit:cover;border-radius:8px}
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;padding:18px;z-index:90;backdrop-filter:blur(8px)}
-    .modal.show{display:flex}
-    .modal-card{width:min(560px,100%);max-height:92vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow)}
-    .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);font-weight:900}
-    .close{border:0;background:transparent;font-size:20px;cursor:pointer}
-    .form{padding:18px;display:grid;gap:14px}
-    .field label{display:block;font-size:12px;color:var(--muted);font-weight:800;margin-bottom:7px}
-    .field input,.field textarea{width:100%;border:1px solid var(--line);border-radius:14px;background:var(--panel2);color:var(--text);padding:12px 13px;outline:none}
-    .field textarea{min-height:100px;resize:vertical}
-    .preview-box{aspect-ratio:1/1;border:1px dashed #3b3b49;border-radius:18px;overflow:hidden;display:grid;place-items:center;color:var(--muted);background:#101016}
-    .preview-box img{width:100%;height:100%;object-fit:cover}
-    .submit{border:0;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-weight:900;padding:12px 16px;border-radius:14px;cursor:pointer}
-    .story-modal{background:#050507}
-    .story-card{width:min(430px,95vw);height:min(760px,88vh);position:relative;border-radius:24px;overflow:hidden;background:#111}
-    .story-bg{width:100%;height:100%;object-fit:cover}
-    .story-overlay{position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.48),transparent 24%,transparent 68%,rgba(0,0,0,.65))}
-    .story-progress{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:4px}
-    .story-progress span{height:3px;background:rgba(255,255,255,.32);border-radius:99px;flex:1;overflow:hidden}
-    .story-progress span:after{content:"";display:block;height:100%;width:0;background:white}
-    .story-progress span.active:after{animation:progress 5s linear forwards}
-    .story-progress span.done:after{width:100%}
-    @keyframes progress{to{width:100%}}
-    .story-top{position:absolute;top:26px;left:15px;right:15px;display:flex;align-items:center;gap:9px}
-    .story-top .avatar{width:36px;height:36px}
-    .story-top b{font-size:13px}
-    .story-close{margin-left:auto;border:0;background:rgba(0,0,0,.28);width:36px;height:36px;border-radius:50%;cursor:pointer}
-    .story-nav{position:absolute;inset:80px 0 70px;display:grid;grid-template-columns:1fr 1fr}
-    .story-nav button{border:0;background:transparent;cursor:pointer}
-    .story-reply{position:absolute;left:14px;right:14px;bottom:16px;display:flex;gap:8px}
-    .story-reply input{flex:1;border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.28);border-radius:99px;padding:11px 15px;color:white;outline:none}
-    .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);background:#fff;color:#111;padding:11px 16px;border-radius:999px;font-size:13px;font-weight:850;opacity:0;pointer-events:none;z-index:150;transition:.25s;box-shadow:var(--shadow)}
-    .toast.show{opacity:1;transform:translate(-50%,0)}
-    .bottom-nav{display:none}
-    .search-view-wrap{max-width:760px;margin:0 auto}
-    .big-search{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--panel);border-radius:18px;padding:14px 16px;margin-bottom:16px}
-    .big-search input{flex:1;background:transparent;border:0;outline:none;color:var(--text);font-size:16px}
-    .people-list{display:grid;gap:8px}
-    .person-card{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);padding:12px 14px;border-radius:17px}
-    .person-card .avatar{width:50px;height:50px}
-    .person-card .who{flex:1}
-    .person-card b{display:block}
-    .person-card span{font-size:12px;color:var(--muted)}
-    @media(max-width:1000px){
-      :root{--side:86px}
-      .brand span,.nav-btn span,.mini-user .mini-copy{display:none}
-      .brand{justify-content:center;padding-left:0;padding-right:0}
-      .nav-btn{justify-content:center;padding:14px}.nav-btn i{width:auto}
-      .badge{position:absolute;margin-left:30px;margin-top:-25px}
-      .mini-user{justify-content:center}
-      .right-card{display:none}
-      .feed-shell{grid-template-columns:minmax(0,630px)}
-    }
-    @media(max-width:720px){
-      :root{--side:0px}
-      .sidebar{display:none}
-      .main{margin-left:0}
-      .topbar{height:62px;padding:0 14px}
-      .mobile-brand{display:flex;align-items:center;gap:8px;font-weight:950;font-size:21px}
-      .mobile-brand .brand-mark{width:30px;height:30px;border-radius:10px}
-      .searchbox{display:none}
-      .content{padding:15px 0 86px}
-      #homeView .content-pad{padding:0 10px}
-      .feed-shell{display:block}
-      .post{border-radius:0;border-left:0;border-right:0;margin-bottom:12px}
-      .stories{padding-left:10px;padding-right:10px}
-      .tabs{padding:0 10px 12px}
-      .top-actions .icon-btn:first-child{display:none}
-      .bottom-nav{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;height:68px;padding-bottom:env(safe-area-inset-bottom);border-top:1px solid var(--line);background:rgba(11,11,15,.96);backdrop-filter:blur(18px);z-index:70}
-      .bottom-nav button{border:0;background:transparent;color:#cfcfda;font-size:20px;cursor:pointer}
-      .bottom-nav button.active{color:white}
-      .bottom-nav .create-mobile i{background:linear-gradient(135deg,#7c3aed,#ec4899);width:38px;height:38px;border-radius:12px;display:inline-grid;place-items:center;color:white}
-      .section-head{padding:0 14px}
-      .explore-grid,.profile-grid{gap:2px;border-radius:0}
-      .grid-item:nth-child(8n+1),.grid-item:nth-child(8n+6){grid-row:auto;aspect-ratio:1/1}
-      .reels{border-radius:0;height:calc(100vh - 130px)}
-      .reel{height:calc(100vh - 130px);min-height:540px;border-radius:0;margin:0}
-      .dm-wrap{border-radius:0;border-left:0;border-right:0;height:calc(100vh - 130px);min-height:500px;grid-template-columns:100%}
-      .dm-list{border-right:0}
-      .chat-pane{display:none}
-      .dm-wrap.chat-open .dm-list{display:none}
-      .dm-wrap.chat-open .chat-pane{display:flex}
-      .chat-back{display:grid!important}
-      .profile-head{grid-template-columns:96px 1fr;gap:15px;padding:18px 14px 24px}
-      .profile-avatar{width:88px;height:88px}
-      .stats{gap:14px;font-size:12px}
-      .stats b{font-size:14px}
-      .profile-top h2{font-size:18px}
-      .profile-actions{grid-column:1/-1;display:flex;gap:8px}
-      .notification-panel{top:58px;right:8px;width:calc(100vw - 16px)}
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#09090d">
+<title>Instrix</title>
+<meta name="description" content="Instrix — paylaş, keşfet, hikayeni anlat ve mesajlaş.">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<style>
+:root{--bg:#09090d;--panel:#111116;--panel2:#18181f;--line:#272731;--text:#f8f8fb;--muted:#9292a3;--accent:#8b5cf6;--accent2:#ec4899;--danger:#ff3d71;--green:#22c55e;--shadow:0 24px 80px rgba(0,0,0,.42);--side:248px}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{overflow-x:hidden}
+button,input,textarea{font:inherit}button{color:inherit}a{color:inherit;text-decoration:none}
+.hidden{display:none!important}.muted{color:var(--muted)}.tiny{font-size:12px;color:var(--muted)}
+::-webkit-scrollbar{width:9px;height:8px}::-webkit-scrollbar-thumb{background:#34343f;border-radius:99px}
+.auth-shell{min-height:100vh;display:grid;grid-template-columns:1.15fr .85fr}
+.auth-art{position:relative;overflow:hidden;background:
+radial-gradient(circle at 20% 25%,rgba(139,92,246,.35),transparent 26%),
+radial-gradient(circle at 78% 65%,rgba(236,72,153,.25),transparent 28%),
+linear-gradient(135deg,#10101a,#07070b)}
+.auth-art:before,.auth-art:after{content:"";position:absolute;border:1px solid rgba(255,255,255,.1);border-radius:42px;transform:rotate(-10deg)}
+.auth-art:before{width:420px;height:560px;left:18%;top:13%;box-shadow:0 40px 100px rgba(0,0,0,.35)}
+.auth-art:after{width:290px;height:390px;right:7%;bottom:10%;transform:rotate(10deg)}
+.auth-copy{position:absolute;left:10%;bottom:12%;max-width:560px;z-index:2}
+.logo{display:flex;align-items:center;gap:10px;font-size:30px;font-weight:950;letter-spacing:-1.2px}
+.logo-mark{width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,var(--accent),var(--accent2) 65%,#22c55e);display:grid;place-items:center;font-weight:1000;box-shadow:0 12px 35px rgba(139,92,246,.3)}
+.auth-copy h1{font-size:54px;line-height:1.02;letter-spacing:-2.5px;margin:26px 0 15px}
+.auth-copy p{font-size:17px;color:#b9b9c8;line-height:1.6}
+.auth-card-wrap{display:grid;place-items:center;padding:30px;background:#0b0b10}
+.auth-card{width:min(430px,100%);border:1px solid var(--line);background:rgba(17,17,22,.96);border-radius:26px;padding:25px;box-shadow:var(--shadow)}
+.auth-card .logo{display:none;margin-bottom:24px}
+.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--panel2);padding:5px;border-radius:14px;margin-bottom:20px}
+.auth-tab{border:0;background:transparent;padding:10px;border-radius:10px;cursor:pointer;font-weight:850;color:var(--muted)}
+.auth-tab.active{background:#fff;color:#111}
+.form{display:grid;gap:13px}.field label{display:block;font-size:12px;font-weight:800;color:#aaaabc;margin-bottom:7px}
+.field input,.field textarea{width:100%;border:1px solid var(--line);background:#15151c;color:white;border-radius:14px;outline:none;padding:12px 13px}
+.field input:focus,.field textarea:focus{border-color:#66529f;box-shadow:0 0 0 3px rgba(139,92,246,.11)}
+.field textarea{min-height:95px;resize:vertical}
+.primary{border:0;background:linear-gradient(135deg,#7c3aed,#a855f7);color:white;padding:12px 15px;border-radius:14px;font-weight:900;cursor:pointer}
+.primary:disabled{opacity:.55;cursor:not-allowed}
+.secondary{border:1px solid var(--line);background:var(--panel2);padding:10px 13px;border-radius:13px;font-weight:800;cursor:pointer}
+.link-btn{border:0;background:none;color:#b69bff;font-weight:800;cursor:pointer;padding:0}
+.auth-note{min-height:20px;font-size:12px;color:#ff94b2;line-height:1.45}
+.auth-hint{font-size:12px;color:var(--muted);line-height:1.55;margin-top:12px}
+.app{min-height:100vh}
+.sidebar{position:fixed;inset:0 auto 0 0;width:var(--side);border-right:1px solid var(--line);background:rgba(9,9,13,.95);backdrop-filter:blur(18px);padding:24px 16px;display:flex;flex-direction:column;z-index:40}
+.sidebar .logo{font-size:27px;padding:3px 8px 22px}.sidebar .logo-mark{width:36px;height:36px}
+.nav{display:grid;gap:6px}
+.nav-btn{display:flex;align-items:center;gap:14px;border:0;background:transparent;border-radius:14px;padding:13px 14px;color:#d5d5df;font-weight:780;cursor:pointer;text-align:left;position:relative}
+.nav-btn i{width:23px;text-align:center;font-size:20px}.nav-btn:hover,.nav-btn.active{background:var(--panel2);color:white}.nav-btn.active i{color:#b99fff}
+.nav-badge{margin-left:auto;background:var(--danger);min-width:20px;height:20px;padding:0 6px;border-radius:999px;display:grid;place-items:center;font-size:10px}
+.me-mini{margin-top:auto;border-top:1px solid var(--line);padding-top:14px;display:flex;align-items:center;gap:10px;cursor:pointer;border-radius:14px}
+.me-mini:hover{background:var(--panel2)}
+.avatar{width:43px;height:43px;border-radius:50%;object-fit:cover;background:#272731;flex:0 0 auto}
+.avatar-lg{width:145px;height:145px;border-radius:50%;object-fit:cover;background:#24242d}
+.main{margin-left:var(--side);min-height:100vh}
+.topbar{position:sticky;top:0;height:70px;border-bottom:1px solid rgba(39,39,49,.82);background:rgba(9,9,13,.83);backdrop-filter:blur(18px);z-index:30;display:flex;align-items:center;gap:15px;padding:0 25px}
+.top-title{font-size:19px;font-weight:900;letter-spacing:-.3px}.top-spacer{flex:1}
+.search-top{width:min(390px,38vw);height:42px;border:1px solid var(--line);background:var(--panel2);border-radius:14px;display:flex;align-items:center;gap:9px;padding:0 13px;color:var(--muted)}
+.search-top input{flex:1;border:0;background:transparent;outline:none;color:white}
+.icon-btn{width:41px;height:41px;border:1px solid var(--line);background:var(--panel);border-radius:13px;display:grid;place-items:center;cursor:pointer;position:relative}
+.icon-btn:hover{background:var(--panel2)}
+.content{max-width:1180px;margin:0 auto;padding:24px 24px 100px}
+.view{display:none}.view.active{display:block}
+.feed-shell{display:grid;grid-template-columns:minmax(0,630px) 300px;gap:34px;align-items:start;justify-content:center}
+.stories{display:flex;gap:13px;overflow:auto;padding:4px 2px 18px;scrollbar-width:none}.stories::-webkit-scrollbar{display:none}
+.story{width:75px;flex:0 0 75px;text-align:center;cursor:pointer}
+.story-ring{width:67px;height:67px;border-radius:50%;padding:3px;margin:auto;background:linear-gradient(135deg,#ff8a00,#ff318c 52%,#8b5cf6);position:relative}
+.story-ring img{width:100%;height:100%;border-radius:50%;object-fit:cover;border:3px solid var(--bg)}
+.story-add{position:absolute;right:0;bottom:0;width:22px;height:22px;border-radius:50%;background:#7c3aed;border:2px solid var(--bg);display:grid;place-items:center;font-size:11px}
+.story-name{font-size:11px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feed-tabs{display:flex;gap:7px;padding-bottom:14px}
+.pill{border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:999px;padding:9px 14px;font-weight:850;font-size:12px;cursor:pointer}
+.pill.active{background:#fff;color:#111;border-color:#fff}
+.post{border:1px solid var(--line);background:var(--panel);border-radius:24px;overflow:hidden;margin-bottom:20px}
+.post-head{display:flex;align-items:center;gap:10px;padding:13px 14px}.post-head .avatar{width:39px;height:39px}.post-user{font-weight:900;font-size:13px;cursor:pointer}.verified{color:#8f85ff;font-size:12px;margin-left:3px}.post-meta{font-size:11px;color:var(--muted);margin-top:2px}.more{margin-left:auto;border:0;background:none;cursor:pointer;font-size:18px}
+.post-media{width:100%;background:#1c1c23;max-height:720px;display:grid;place-items:center;position:relative;overflow:hidden}
+.post-media img,.post-media video{width:100%;max-height:720px;object-fit:cover;display:block}
+.post-actions{display:flex;align-items:center;padding:9px 10px 5px;gap:2px}.post-actions button{width:40px;height:40px;border:0;background:transparent;border-radius:12px;font-size:20px;cursor:pointer}.post-actions button:hover{background:var(--panel2)}.post-actions .save{margin-left:auto}.liked{color:var(--danger)}.saved{color:#f4d35e}
+.post-body{padding:0 14px 15px}.likes{font-size:13px;font-weight:900;margin-bottom:7px}.caption{font-size:14px;line-height:1.48}.caption b{margin-right:6px}.comments-link{font-size:13px;color:var(--muted);margin-top:7px;cursor:pointer}.time{font-size:10px;color:#707080;margin-top:8px;text-transform:uppercase}
+.right-card{position:sticky;top:94px;border:1px solid var(--line);background:var(--panel);border-radius:20px;padding:15px}.right-card h4{margin:0 0 9px;color:#b0b0bd;font-size:13px}
+.suggest-row,.person-row{display:flex;align-items:center;gap:10px;padding:10px 2px}.suggest-row .avatar,.person-row .avatar{width:42px;height:42px}.row-copy{flex:1;min-width:0}.row-copy b{font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.row-copy span{font-size:11px;color:var(--muted)}.follow-btn{border:0;background:none;color:#aa94ff;font-weight:900;font-size:12px;cursor:pointer}.follow-btn.following{color:var(--muted)}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.section-head h2{margin:0;font-size:28px;letter-spacing:-.8px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;overflow:hidden;border-radius:18px}.grid-item{aspect-ratio:1/1;position:relative;background:#1d1d25;overflow:hidden;cursor:pointer}.grid-item img,.grid-item video{width:100%;height:100%;object-fit:cover}.grid-hover{position:absolute;inset:0;background:rgba(0,0,0,.42);opacity:0;display:flex;align-items:center;justify-content:center;gap:18px;font-weight:900}.grid-item:hover .grid-hover{opacity:1}
+.empty{padding:70px 18px;text-align:center;color:var(--muted)}.empty i{font-size:42px;margin-bottom:13px}.empty h3{color:#e8e8ef;margin:0 0 8px}
+.search-big{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--panel);border-radius:17px;padding:13px 15px;margin-bottom:15px}.search-big input{flex:1;border:0;background:transparent;color:white;outline:none;font-size:16px}
+.search-results{display:grid;gap:8px}.person-row{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:12px 14px;cursor:pointer}.person-row:hover{background:var(--panel2)}.person-row .avatar{width:50px;height:50px}
+.profile-head{display:grid;grid-template-columns:170px 1fr;gap:34px;align-items:center;padding:25px 22px 35px}.profile-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.profile-top h2{margin:0;font-size:22px}.stats{display:flex;gap:28px;margin:20px 0 14px;font-size:14px}.stats b{font-size:16px}.bio{font-size:14px;line-height:1.55;white-space:pre-wrap}.profile-tabs{display:flex;justify-content:center;gap:42px;border-top:1px solid var(--line)}.profile-tab{padding:16px 0;margin-top:-1px;border-top:2px solid transparent;color:var(--muted);font-size:12px;font-weight:900;cursor:pointer}.profile-tab.active{color:white;border-color:white}
+.dm-wrap{display:grid;grid-template-columns:330px 1fr;height:calc(100vh - 125px);min-height:590px;border:1px solid var(--line);border-radius:24px;overflow:hidden;background:var(--panel)}.dm-list{border-right:1px solid var(--line);overflow:auto}.dm-head{padding:15px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.chat-row{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}.chat-row:hover,.chat-row.active{background:var(--panel2)}.chat-row .avatar{width:48px;height:48px}.chat-pane{display:flex;flex-direction:column;min-width:0}.chat-top{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}.chat-messages{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:8px;background:radial-gradient(circle at 75% 0,rgba(139,92,246,.08),transparent 31%)}.msg{max-width:min(72%,520px);padding:10px 13px;border-radius:18px;font-size:14px;line-height:1.4}.msg.them{align-self:flex-start;background:var(--panel2);border-bottom-left-radius:5px}.msg.me{align-self:flex-end;background:linear-gradient(135deg,#7c3aed,#a855f7);border-bottom-right-radius:5px}.msg-time{font-size:9px;opacity:.65;margin-top:4px}.chat-compose{display:flex;gap:8px;align-items:flex-end;padding:11px;border-top:1px solid var(--line)}.chat-compose textarea{flex:1;min-height:44px;max-height:120px;resize:none;border:1px solid var(--line);background:var(--panel2);color:white;border-radius:15px;padding:11px 13px;outline:none}.send{width:44px;height:44px;border:0;background:#7c3aed;border-radius:14px;cursor:pointer}
+.reels{height:calc(100vh - 115px);overflow:auto;scroll-snap-type:y mandatory;border-radius:24px}.reel{height:calc(100vh - 115px);min-height:570px;scroll-snap-align:start;position:relative;background:#15151b;overflow:hidden;border-radius:24px;margin-bottom:12px}.reel video{width:100%;height:100%;object-fit:cover}.reel-shade{position:absolute;inset:0;background:linear-gradient(transparent 58%,rgba(0,0,0,.8))}.reel-info{position:absolute;left:20px;right:88px;bottom:24px}.reel-info b{font-size:14px}.reel-info p{font-size:14px;line-height:1.45}.reel-actions{position:absolute;right:15px;bottom:25px;display:grid;gap:12px}.reel-actions button{width:48px;height:48px;border-radius:50%;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.28);backdrop-filter:blur(10px);font-size:19px;cursor:pointer}
+.notif-list{display:grid;gap:8px}.notif-row{display:flex;align-items:center;gap:11px;border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:12px 14px}.notif-row.unread{border-color:#4f3f76;background:rgba(139,92,246,.06)}.notif-row .avatar{width:46px;height:46px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.74);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:18px;z-index:100}.modal.show{display:flex}.modal-card{width:min(570px,100%);max-height:92vh;overflow:auto;border:1px solid var(--line);background:var(--panel);border-radius:24px;box-shadow:var(--shadow)}.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);font-weight:900}.close{border:0;background:none;font-size:20px;cursor:pointer}.modal-body{padding:18px}.composer-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--panel2);padding:5px;border-radius:13px;margin-bottom:14px}.composer-tab{border:0;background:transparent;padding:9px;border-radius:10px;color:var(--muted);font-weight:850;cursor:pointer}.composer-tab.active{background:white;color:#111}.preview{aspect-ratio:1/1;border:1px dashed #3d3d49;border-radius:18px;display:grid;place-items:center;color:var(--muted);overflow:hidden;background:#0e0e13;margin-bottom:14px}.preview img,.preview video{width:100%;height:100%;object-fit:cover}.comments{display:grid;gap:12px}.comment-row{display:flex;gap:10px}.comment-row .avatar{width:36px;height:36px}.comment-copy{font-size:13px;line-height:1.45;flex:1}.comment-copy b{margin-right:5px}.story-viewer{width:min(430px,95vw);height:min(760px,88vh);position:relative;border-radius:24px;overflow:hidden;background:#111}.story-viewer img,.story-viewer video{width:100%;height:100%;object-fit:cover}.story-overlay{position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.45),transparent 25%,transparent 70%,rgba(0,0,0,.65))}.story-top{position:absolute;left:14px;right:14px;top:15px;display:flex;align-items:center;gap:9px}.story-top .avatar{width:36px;height:36px}.story-close{margin-left:auto;width:36px;height:36px;border:0;background:rgba(0,0,0,.35);border-radius:50%;cursor:pointer}.story-reply{position:absolute;left:14px;right:14px;bottom:15px;display:flex;gap:8px}.story-reply input{flex:1;border:1px solid rgba(255,255,255,.32);background:rgba(0,0,0,.28);color:white;border-radius:999px;padding:11px 14px;outline:none}
+.toast{position:fixed;left:50%;bottom:27px;transform:translate(-50%,20px);background:#fff;color:#111;border-radius:999px;padding:11px 16px;font-size:13px;font-weight:850;opacity:0;pointer-events:none;transition:.23s;z-index:150;box-shadow:var(--shadow)}.toast.show{opacity:1;transform:translate(-50%,0)}
+.loading{display:grid;place-items:center;padding:60px;color:var(--muted)}.spinner{width:28px;height:28px;border:3px solid #2b2b36;border-top-color:#9e7cff;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:10px}@keyframes spin{to{transform:rotate(360deg)}}
+.bottom-nav{display:none}
+@media(max-width:1000px){:root{--side:82px}.sidebar .logo span,.nav-btn span,.me-mini .me-copy{display:none}.sidebar .logo{justify-content:center}.nav-btn{justify-content:center}.nav-btn i{width:auto}.nav-badge{position:absolute;right:11px;top:7px}.me-mini{justify-content:center}.feed-shell{grid-template-columns:minmax(0,630px)}.right-card{display:none}}
+@media(max-width:740px){
+.auth-shell{display:block}.auth-art{display:none}.auth-card-wrap{min-height:100vh;padding:18px}.auth-card .logo{display:flex}.auth-card{border:0;background:transparent;box-shadow:none;padding:15px}
+:root{--side:0}.sidebar{display:none}.main{margin-left:0}.topbar{height:61px;padding:0 13px}.top-title{font-size:18px}.search-top{display:none}.content{padding:14px 0 82px}.stories{padding-left:10px;padding-right:10px}.feed-tabs{padding-left:10px}.post{border-radius:0;border-left:0;border-right:0;margin-bottom:12px}.section-head{padding:0 13px}.grid{border-radius:0;gap:2px}.profile-head{grid-template-columns:92px 1fr;gap:14px;padding:18px 13px 24px}.avatar-lg{width:86px;height:86px}.profile-top h2{font-size:18px}.stats{gap:13px;font-size:11px}.stats b{font-size:14px}.profile-tabs{gap:28px}.dm-wrap{border-radius:0;border-left:0;border-right:0;height:calc(100vh - 129px);min-height:500px;grid-template-columns:100%}.dm-list{border-right:0}.chat-pane{display:none}.dm-wrap.chat-open .dm-list{display:none}.dm-wrap.chat-open .chat-pane{display:flex}.chat-back{display:grid!important}.reels{height:calc(100vh - 129px);border-radius:0}.reel{height:calc(100vh - 129px);border-radius:0;margin:0}.notif-list,.search-results{padding:0 10px}.bottom-nav{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;height:67px;padding-bottom:env(safe-area-inset-bottom);background:rgba(9,9,13,.96);border-top:1px solid var(--line);backdrop-filter:blur(16px);z-index:70}.bottom-nav button{border:0;background:transparent;font-size:20px;color:#cfcfda}.bottom-nav button.active{color:white}.bottom-nav .create-mobile i{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#ec4899);display:inline-grid;place-items:center}.modal{padding:8px}.modal-card{border-radius:20px}
+}
+</style>
 </head>
 <body>
-<div class="app">
+<section id="authScreen" class="auth-shell">
+  <div class="auth-art">
+    <div class="auth-copy">
+      <div class="logo"><div class="logo-mark">X</div><span>Instrix</span></div>
+      <h1>Kendi dünyanı paylaş.<br>Gerçek insanlarla.</h1>
+      <p>Gönderiler, hikâyeler, keşfet, kısa videolar, profiller ve gerçek zamanlı mesajlar tek yerde.</p>
+    </div>
+  </div>
+  <div class="auth-card-wrap">
+    <div class="auth-card">
+      <div class="logo"><div class="logo-mark">X</div><span>Instrix</span></div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-auth-tab="login">Giriş yap</button>
+        <button class="auth-tab" data-auth-tab="signup">Hesap oluştur</button>
+      </div>
+      <form id="loginForm" class="form">
+        <div class="field"><label>E-posta</label><input id="loginEmail" type="email" autocomplete="email" required placeholder="sen@email.com"></div>
+        <div class="field"><label>Şifre</label><input id="loginPassword" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••"></div>
+        <div id="loginNote" class="auth-note"></div>
+        <button id="loginBtn" class="primary" type="submit">Giriş yap</button>
+      </form>
+      <form id="signupForm" class="form hidden">
+        <div class="field"><label>Adın</label><input id="signupName" required maxlength="60" placeholder="Görünen ad"></div>
+        <div class="field"><label>Kullanıcı adı</label><input id="signupUsername" required minlength="3" maxlength="30" pattern="[a-z0-9._]+" placeholder="kullanici.adi"></div>
+        <div class="field"><label>E-posta</label><input id="signupEmail" type="email" autocomplete="email" required placeholder="sen@email.com"></div>
+        <div class="field"><label>Şifre</label><input id="signupPassword" type="password" autocomplete="new-password" required minlength="6" placeholder="En az 6 karakter"></div>
+        <div id="signupNote" class="auth-note"></div>
+        <button id="signupBtn" class="primary" type="submit">Instrix hesabı oluştur</button>
+      </form>
+      <div class="auth-hint">Kaydolduğunda Instrix kullanım kurallarını ve gizlilik şartlarını kabul etmiş olursun. E-posta doğrulaması açıksa gelen bağlantıyı onayladıktan sonra giriş yapabilirsin.</div>
+    </div>
+  </div>
+</section>
+
+<div id="app" class="app hidden">
   <aside class="sidebar">
-    <div class="brand"><div class="brand-mark"></div><span>Instrix</span></div>
+    <div class="logo"><div class="logo-mark">X</div><span>Instrix</span></div>
     <nav class="nav">
       <button class="nav-btn active" data-view="home"><i class="fa-solid fa-house"></i><span>Ana Sayfa</span></button>
       <button class="nav-btn" data-view="search"><i class="fa-solid fa-magnifying-glass"></i><span>Ara</span></button>
       <button class="nav-btn" data-view="explore"><i class="fa-regular fa-compass"></i><span>FYP / Keşfet</span></button>
       <button class="nav-btn" data-view="reels"><i class="fa-solid fa-play"></i><span>Clips</span></button>
-      <button class="nav-btn" data-view="dm"><i class="fa-regular fa-paper-plane"></i><span>Mesajlar</span><b class="badge">3</b></button>
-      <button class="nav-btn" id="notifSide"><i class="fa-regular fa-heart"></i><span>Bildirimler</span></button>
+      <button class="nav-btn" data-view="dm"><i class="fa-regular fa-paper-plane"></i><span>Mesajlar</span></button>
+      <button class="nav-btn" data-view="notifications"><i class="fa-regular fa-heart"></i><span>Bildirimler</span><b id="notifBadge" class="nav-badge hidden">0</b></button>
       <button class="nav-btn" id="createSide"><i class="fa-regular fa-square-plus"></i><span>Oluştur</span></button>
       <button class="nav-btn" data-view="profile"><i class="fa-regular fa-user"></i><span>Profil</span></button>
     </nav>
-    <div class="side-foot">
-      <div class="mini-user" data-view="profile">
-        <img class="avatar" src="https://i.pravatar.cc/160?img=12" alt="" />
-        <div class="mini-copy"><b>ametrix</b><div class="tiny">@ametrix</div></div>
-      </div>
+    <div id="meMini" class="me-mini">
+      <img id="meMiniAvatar" class="avatar" alt="">
+      <div class="me-copy"><b id="meMiniUser">...</b><div class="tiny">Profilin</div></div>
     </div>
   </aside>
 
   <main class="main">
     <header class="topbar">
-      <div class="mobile-brand"><div class="brand-mark"></div>Instrix</div>
-      <div class="searchbox"><i class="fa-solid fa-magnifying-glass"></i><input id="topSearch" placeholder="Ara: kişiler, etiketler, yerler" /></div>
-      <div class="top-actions">
-        <button class="icon-btn" id="themeBtn" title="Tema"><i class="fa-regular fa-moon"></i></button>
-        <button class="icon-btn" id="notifBtn" title="Bildirimler"><i class="fa-regular fa-heart"></i><span class="dot"></span></button>
-        <button class="icon-btn" data-view="dm" title="Mesajlar"><i class="fa-regular fa-paper-plane"></i></button>
-      </div>
+      <div id="topTitle" class="top-title">Ana Sayfa</div>
+      <div class="top-spacer"></div>
+      <div class="search-top"><i class="fa-solid fa-magnifying-glass"></i><input id="topSearch" placeholder="Kişi ara"></div>
+      <button class="icon-btn" data-view="notifications"><i class="fa-regular fa-heart"></i></button>
+      <button class="icon-btn" data-view="dm"><i class="fa-regular fa-paper-plane"></i></button>
     </header>
 
     <section id="homeView" class="view active">
@@ -290,87 +171,73 @@
         <div class="feed-shell">
           <div>
             <div id="stories" class="stories"></div>
-            <div class="tabs content-pad">
-              <button class="pill active" data-feed="forYou">Senin İçin</button>
+            <div class="feed-tabs">
+              <button class="pill active" data-feed="foryou">Senin İçin</button>
               <button class="pill" data-feed="following">Takip Ettiklerin</button>
             </div>
             <div id="feed"></div>
           </div>
           <aside class="right-card">
-            <div class="suggest-title"><span>Senin için öneriler</span><span>İnstrix</span></div>
+            <h4>Önerilen hesaplar</h4>
             <div id="suggestions"></div>
-            <div class="right-links">Hakkında · Yardım · Gizlilik · Koşullar · Konumlar · Dil<br><br>© 2026 INSTRIX</div>
           </aside>
         </div>
       </div>
     </section>
 
     <section id="searchView" class="view">
-      <div class="content search-view-wrap">
+      <div class="content" style="max-width:760px">
         <div class="section-head"><h2>Ara</h2></div>
-        <div class="big-search"><i class="fa-solid fa-magnifying-glass"></i><input id="bigSearch" placeholder="Kullanıcı adı, isim veya etiket ara" autofocus /></div>
-        <div id="searchResults" class="people-list"></div>
+        <div class="search-big"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" placeholder="Kullanıcı adı veya isim ara"></div>
+        <div id="searchResults" class="search-results"></div>
       </div>
     </section>
 
     <section id="exploreView" class="view">
       <div class="content">
-        <div class="section-head"><h2>Senin için</h2><button class="secondary" id="refreshExplore"><i class="fa-solid fa-wand-magic-sparkles"></i> Yenile</button></div>
-        <div id="exploreGrid" class="explore-grid"></div>
+        <div class="section-head"><h2>Senin için</h2><button id="refreshExplore" class="secondary"><i class="fa-solid fa-rotate"></i> Yenile</button></div>
+        <div id="exploreGrid" class="grid"></div>
       </div>
     </section>
 
     <section id="reelsView" class="view">
-      <div class="content" style="max-width:520px">
-        <div id="reels" class="reels"></div>
-      </div>
+      <div class="content" style="max-width:520px"><div id="reels" class="reels"></div></div>
     </section>
 
     <section id="dmView" class="view">
       <div class="content">
         <div id="dmWrap" class="dm-wrap">
           <div class="dm-list">
-            <div class="dm-list-head"><b>Mesajlar</b><button class="icon-btn" style="width:36px;height:36px"><i class="fa-regular fa-pen-to-square"></i></button></div>
+            <div class="dm-head"><b>Mesajlar</b><button id="newDmBtn" class="icon-btn" style="width:36px;height:36px"><i class="fa-regular fa-pen-to-square"></i></button></div>
             <div id="chatList"></div>
           </div>
           <div class="chat-pane">
-            <div id="chatHead" class="chat-head"></div>
+            <div id="chatTop" class="chat-top"></div>
             <div id="chatMessages" class="chat-messages"></div>
             <div class="chat-compose">
-              <button class="icon-btn" style="width:44px;height:44px"><i class="fa-regular fa-face-smile"></i></button>
               <textarea id="messageInput" rows="1" placeholder="Mesaj yaz..."></textarea>
-              <button id="sendBtn" class="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+              <button id="sendMessageBtn" class="send"><i class="fa-solid fa-paper-plane"></i></button>
             </div>
           </div>
         </div>
       </div>
     </section>
 
+    <section id="notificationsView" class="view">
+      <div class="content" style="max-width:760px">
+        <div class="section-head"><h2>Bildirimler</h2><button id="markReadBtn" class="secondary">Tümünü okundu yap</button></div>
+        <div id="notificationsList" class="notif-list"></div>
+      </div>
+    </section>
+
     <section id="profileView" class="view">
       <div class="content" style="max-width:940px">
-        <div class="profile-head">
-          <img id="profileAvatar" class="profile-avatar" src="https://i.pravatar.cc/300?img=12" alt="" />
-          <div>
-            <div class="profile-top">
-              <h2 id="profileUsername">ametrix</h2><i class="fa-solid fa-circle-check verified"></i>
-              <button class="secondary" id="editProfileBtn">Profili düzenle</button>
-              <button class="secondary"><i class="fa-solid fa-gear"></i></button>
-            </div>
-            <div class="stats">
-              <span><b id="postCount">8</b> gönderi</span>
-              <span><b>12.8K</b> takipçi</span>
-              <span><b>386</b> takip</span>
-            </div>
-            <div class="bio"><b id="profileName">Ametrix</b><br><span id="profileBio">music • code • late night ideas ✦<br>creating things on the internet</span></div>
-          </div>
-          <div class="profile-actions"></div>
-        </div>
+        <div id="profileHead"></div>
         <div class="profile-tabs">
           <div class="profile-tab active" data-profile-tab="posts"><i class="fa-solid fa-table-cells"></i> GÖNDERİLER</div>
-          <div class="profile-tab" data-profile-tab="saved"><i class="fa-regular fa-bookmark"></i> KAYDEDİLENLER</div>
-          <div class="profile-tab" data-profile-tab="tagged"><i class="fa-regular fa-user"></i> ETİKETLENENLER</div>
+          <div id="savedTab" class="profile-tab" data-profile-tab="saved"><i class="fa-regular fa-bookmark"></i> KAYDEDİLENLER</div>
         </div>
-        <div id="profileGrid" class="profile-grid"></div>
+        <div id="profileGrid" class="grid"></div>
       </div>
     </section>
   </main>
@@ -378,329 +245,517 @@
   <nav class="bottom-nav">
     <button class="active" data-view="home"><i class="fa-solid fa-house"></i></button>
     <button data-view="explore"><i class="fa-regular fa-compass"></i></button>
-    <button class="create-mobile" id="createMobile"><i class="fa-solid fa-plus"></i></button>
+    <button id="createMobile" class="create-mobile"><i class="fa-solid fa-plus"></i></button>
     <button data-view="reels"><i class="fa-solid fa-play"></i></button>
     <button data-view="dm"><i class="fa-regular fa-paper-plane"></i></button>
     <button data-view="profile"><i class="fa-regular fa-user"></i></button>
   </nav>
-
-  <div id="notificationPanel" class="notification-panel">
-    <div class="panel-title">Bildirimler</div>
-    <div id="notifications"></div>
-  </div>
-
-  <div id="createModal" class="modal">
-    <div class="modal-card">
-      <div class="modal-head"><span>Yeni gönderi</span><button class="close" data-close="createModal"><i class="fa-solid fa-xmark"></i></button></div>
-      <div class="form">
-        <div class="preview-box" id="postPreview"><span><i class="fa-regular fa-image"></i> Fotoğraf önizlemesi</span></div>
-        <div class="field"><label>Fotoğraf seç</label><input id="postFile" type="file" accept="image/*" /></div>
-        <div class="field"><label>veya fotoğraf URL'si</label><input id="postUrl" placeholder="https://..." /></div>
-        <div class="field"><label>Açıklama</label><textarea id="postCaption" placeholder="Bir şeyler yaz..."></textarea></div>
-        <div class="field"><label>Konum</label><input id="postLocation" placeholder="Konum ekle" /></div>
-        <button id="sharePostBtn" class="submit">Paylaş</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="editProfileModal" class="modal">
-    <div class="modal-card">
-      <div class="modal-head"><span>Profili düzenle</span><button class="close" data-close="editProfileModal"><i class="fa-solid fa-xmark"></i></button></div>
-      <div class="form">
-        <div class="field"><label>Görünen ad</label><input id="editName" value="Ametrix" /></div>
-        <div class="field"><label>Kullanıcı adı</label><input id="editUsername" value="ametrix" /></div>
-        <div class="field"><label>Biyografi</label><textarea id="editBio">music • code • late night ideas ✦&#10;creating things on the internet</textarea></div>
-        <button id="saveProfileBtn" class="submit">Kaydet</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="commentsModal" class="modal">
-    <div class="modal-card">
-      <div class="modal-head"><span>Yorumlar</span><button class="close" data-close="commentsModal"><i class="fa-solid fa-xmark"></i></button></div>
-      <div id="commentList" style="padding:10px 18px 0"></div>
-      <div class="chat-compose" style="border-top:1px solid var(--line);margin-top:10px">
-        <input id="commentInput" style="flex:1;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:16px;padding:12px;outline:none" placeholder="Yorum ekle..." />
-        <button id="sendCommentBtn" class="send-btn"><i class="fa-solid fa-arrow-up"></i></button>
-      </div>
-    </div>
-  </div>
-
-  <div id="storyModal" class="modal story-modal"></div>
-  <div id="toast" class="toast">Tamam</div>
 </div>
 
+<div id="composerModal" class="modal">
+  <div class="modal-card">
+    <div class="modal-head"><span>Oluştur</span><button class="close" data-close="composerModal"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="composer-tabs">
+        <button class="composer-tab active" data-composer="post">Gönderi</button>
+        <button class="composer-tab" data-composer="story">Hikâye</button>
+      </div>
+      <div id="mediaPreview" class="preview"><span><i class="fa-regular fa-image"></i> Fotoğraf veya video seç</span></div>
+      <div class="form">
+        <div class="field"><label>Medya</label><input id="mediaFile" type="file" accept="image/*,video/mp4,video/webm"></div>
+        <div class="field"><label>Açıklama</label><textarea id="composerCaption" placeholder="Ne düşünüyorsun?"></textarea></div>
+        <div id="locationField" class="field"><label>Konum</label><input id="composerLocation" placeholder="Konum ekle"></div>
+        <button id="publishBtn" class="primary">Paylaş</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="commentsModal" class="modal">
+  <div class="modal-card">
+    <div class="modal-head"><span>Yorumlar</span><button class="close" data-close="commentsModal"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div id="commentsList" class="comments"></div>
+      <div class="chat-compose" style="padding:12px 0 0;border-top:0">
+        <textarea id="commentInput" rows="1" placeholder="Yorum ekle..."></textarea>
+        <button id="sendCommentBtn" class="send"><i class="fa-solid fa-arrow-up"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="editProfileModal" class="modal">
+  <div class="modal-card">
+    <div class="modal-head"><span>Profili düzenle</span><button class="close" data-close="editProfileModal"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body form">
+      <div class="field"><label>Profil fotoğrafı</label><input id="editAvatar" type="file" accept="image/*"></div>
+      <div class="field"><label>Ad</label><input id="editName" maxlength="60"></div>
+      <div class="field"><label>Kullanıcı adı</label><input id="editUsername" maxlength="30"></div>
+      <div class="field"><label>Biyografi</label><textarea id="editBio" maxlength="300"></textarea></div>
+      <div class="field"><label>Web sitesi</label><input id="editWebsite" placeholder="https://..."></div>
+      <button id="saveProfileBtn" class="primary">Kaydet</button>
+      <button id="logoutBtn" class="secondary" style="color:#ff87aa">Çıkış yap</button>
+    </div>
+  </div>
+</div>
+
+<div id="newDmModal" class="modal">
+  <div class="modal-card">
+    <div class="modal-head"><span>Yeni mesaj</span><button class="close" data-close="newDmModal"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <div class="search-big"><i class="fa-solid fa-magnifying-glass"></i><input id="dmSearchInput" placeholder="Kullanıcı ara"></div>
+      <div id="dmSearchResults" class="search-results"></div>
+    </div>
+  </div>
+</div>
+
+<div id="storyModal" class="modal"></div>
+<div id="toast" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js"></script>
 <script>
 (function(){
-  var $ = function(s){ return document.querySelector(s); };
-  var $$ = function(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); };
-  var storeKey = "instrix-state-v1";
-  var stored = {};
-  try{ stored = JSON.parse(localStorage.getItem(storeKey) || "{}"); }catch(e){ stored = {}; }
+"use strict";
 
-  var users = [
-    {u:"selin",n:"Selin Kaya",a:"https://i.pravatar.cc/160?img=47",bio:"film • coffee • tiny adventures",v:true},
-    {u:"mert.jpg",n:"Mert",a:"https://i.pravatar.cc/160?img=11",bio:"photography / istanbul",v:false},
-    {u:"deniz.wav",n:"Deniz",a:"https://i.pravatar.cc/160?img=32",bio:"producer & night owl",v:true},
-    {u:"lina",n:"Lina A.",a:"https://i.pravatar.cc/160?img=44",bio:"designing my own little world",v:false},
-    {u:"arda.dev",n:"Arda",a:"https://i.pravatar.cc/160?img=14",bio:"building weird things",v:false},
-    {u:"ece",n:"Ece",a:"https://i.pravatar.cc/160?img=25",bio:"slow mornings, loud playlists",v:true}
-  ];
+var SB_URL="https://wruxmjgzosrmblbkfwde.supabase.co";
+var SB_KEY="sb_publishable_wsK_2zsrXGAp6SCLJhKZBQ_Va44wvUg";
+var db=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+var session=null,user=null,me=null;
+var currentView="home",feedMode="foryou",profileId=null,profileTab="posts";
+var currentCommentPost=null,currentConversation=null,messageChannel=null,notifChannel=null;
+var composerType="post";
+var cache={profiles:{},posts:[],likes:{},commentsCount:{},saved:{}};
 
-  var posts = [
-    {id:"p1",u:"selin",a:users[0].a,img:"https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=85",cap:"Bazen sadece yola çıkmak gerekiyor. 🌿",loc:"Kaş, Antalya",likes:2421,comments:["çok güzel olmuş ✨","renkler mükemmel","buraya gitmem lazım"]},
-    {id:"p2",u:"deniz.wav",a:users[2].a,img:"https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1200&q=85",cap:"03:17 — hâlâ bit üzerinde çalışıyorum.",loc:"studio",likes:793,comments:["drop ittt","bu vibe >>>"]},
-    {id:"p3",u:"mert.jpg",a:users[1].a,img:"https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1200&q=85",cap:"şehir yukarıdan daha sessiz.",loc:"İstanbul",likes:5108,comments:["harika kare","lens?","şehir başka görünüyor"]},
-    {id:"p4",u:"lina",a:users[3].a,img:"https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1200&q=85",cap:"workspace reset ♡",loc:"home",likes:1802,comments:["çok iyi","masa setup link?"]},
-    {id:"p5",u:"ece",a:users[5].a,img:"https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=1200&q=85",cap:"dün gece.",loc:"live",likes:6340,comments:["enerjiye bak","wish i was there"]},
-    {id:"p6",u:"arda.dev",a:users[4].a,img:"https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=85",cap:"bugün sadece build. sonra yine build.",loc:"somewhere online",likes:907,comments:["ship it","çok gerçek"]},
-    {id:"p7",u:"selin",a:users[0].a,img:"https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=85",cap:"hafta sonu plansızlığı",loc:"İzmir",likes:2788,comments:["fav","çok tatlı"]},
-    {id:"p8",u:"mert.jpg",a:users[1].a,img:"https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=85",cap:"street light.",loc:"Nişantaşı",likes:3204,comments:["clean","🔥"]}
-  ];
-  var userPosts = stored.userPosts || [
-    {id:"u1",u:"ametrix",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1200&q=85",cap:"new era loading…",loc:"",likes:1480,comments:["we are ready","👀"]},
-    {id:"u2",u:"ametrix",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1471478331149-c72f17e33c73?auto=format&fit=crop&w=1200&q=85",cap:"midnight mix.",loc:"",likes:2331,comments:["sounds like a hit"]},
-    {id:"u3",u:"ametrix",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=1200&q=85",cap:"work in progress",loc:"",likes:1994,comments:["release when?"]},
-    {id:"u4",u:"ametrix",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=1200&q=85",cap:"lights.",loc:"",likes:4088,comments:["insane"]},
-    {id:"u5",u:"ametrix",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=85",cap:"crowd energy",loc:"",likes:5101,comments:["🔥🔥🔥"]},
-    {id:"u6",u:"ametrix",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1475275166152-f1e8005f9854?auto=format&fit=crop&w=1200&q=85",cap:"after hours",loc:"",likes:1709,comments:["vibe"]},
-    {id:"u7",u:"ametrix",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1524650359799-842906ca1c06?auto=format&fit=crop&w=1200&q=85",cap:"one more take",loc:"",likes:2200,comments:["this one"]},
-    {id:"u8",u:"ametrix",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&q=85",cap:"see you soon",loc:"",likes:6177,comments:["OMGG"]}
-  ];
+function q(s){return document.querySelector(s)}
+function qa(s){return Array.prototype.slice.call(document.querySelectorAll(s))}
+function safe(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){if(c==="&")return"&amp;";if(c==="<")return"&lt;";if(c===">")return"&gt;";if(c==='"')return"&quot;";return"&#039;"})}
+function avatar(p){var seed=p&&p.username?p.username:"instrix";return p&&p.avatar_url?p.avatar_url:"https://api.dicebear.com/9.x/initials/svg?backgroundType=gradientLinear&seed="+encodeURIComponent(seed)}
+function fmt(n){n=Number(n||0);if(n>=1000000)return(n/1000000).toFixed(1)+"M";if(n>=1000)return(n/1000).toFixed(n>=10000?0:1)+"K";return String(n)}
+function ago(ts){if(!ts)return"";var d=(Date.now()-new Date(ts).getTime())/1000;if(d<60)return"şimdi";if(d<3600)return Math.floor(d/60)+" dk";if(d<86400)return Math.floor(d/3600)+" sa";if(d<604800)return Math.floor(d/86400)+" g";return new Date(ts).toLocaleDateString("tr-TR")}
+function toast(t){var e=q("#toast");e.textContent=t;e.classList.add("show");clearTimeout(window.__toast);window.__toast=setTimeout(function(){e.classList.remove("show")},1900)}
+function loading(target){q(target).innerHTML='<div class="loading"><div><div class="spinner"></div>Yükleniyor...</div></div>'}
+function empty(target,icon,title,text){q(target).innerHTML='<div class="empty"><i class="'+icon+'"></i><h3>'+safe(title)+'</h3><div>'+safe(text)+'</div></div>'}
+function closeModal(id){q("#"+id).classList.remove("show")}
+function openModal(id){q("#"+id).classList.add("show")}
+function setBusy(btn,busy,label){if(!btn)return;btn.disabled=busy;if(label)btn.textContent=busy?"İşleniyor...":label}
+function titleFor(v){return{home:"Ana Sayfa",search:"Ara",explore:"Senin için",reels:"Clips",dm:"Mesajlar",notifications:"Bildirimler",profile:"Profil"}[v]||"Instrix"}
 
-  var state = {
-    liked: stored.liked || {},
-    saved: stored.saved || {},
-    followed: stored.followed || {},
-    comments: stored.comments || {},
-    messages: stored.messages || {},
-    profile: stored.profile || {name:"Ametrix",username:"ametrix",bio:"music • code • late night ideas ✦\\ncreating things on the internet"}
-  };
+qa("[data-auth-tab]").forEach(function(b){b.addEventListener("click",function(){
+  qa("[data-auth-tab]").forEach(function(x){x.classList.toggle("active",x===b)});
+  q("#loginForm").classList.toggle("hidden",b.getAttribute("data-auth-tab")!=="login");
+  q("#signupForm").classList.toggle("hidden",b.getAttribute("data-auth-tab")!=="signup");
+})});
 
-  function persist(){
-    localStorage.setItem(storeKey, JSON.stringify({
-      liked:state.liked,saved:state.saved,followed:state.followed,comments:state.comments,messages:state.messages,userPosts:userPosts,profile:state.profile
-    }));
-  }
-  function esc(s){ return String(s || "").replace(/[&<>"']/g,function(m){ if(m==="&")return "&amp;"; if(m==="<")return "&lt;"; if(m===">")return "&gt;"; if(m==='"')return "&quot;"; return "&#039;"; }); }
-  function toast(t){
-    var el=$("#toast"); el.textContent=t; el.classList.add("show");
-    clearTimeout(window.__toast); window.__toast=setTimeout(function(){ el.classList.remove("show"); },1800);
-  }
-  function fmt(n){ if(n>=1000000)return (n/1000000).toFixed(1)+"M"; if(n>=1000)return (n/1000).toFixed(n>=10000?0:1)+"K"; return n; }
+q("#loginForm").addEventListener("submit",async function(e){
+  e.preventDefault();q("#loginNote").textContent="";
+  var btn=q("#loginBtn");setBusy(btn,true,"Giriş yap");
+  var res=await db.auth.signInWithPassword({email:q("#loginEmail").value.trim(),password:q("#loginPassword").value});
+  setBusy(btn,false,"Giriş yap");
+  if(res.error){q("#loginNote").textContent=res.error.message;return}
+  session=res.data.session;user=res.data.user;await enterApp();
+});
 
-  function showView(name){
-    $$(".view").forEach(function(v){v.classList.remove("active");});
-    var v=$("#"+name+"View"); if(v)v.classList.add("active");
-    $$(".nav-btn[data-view],.bottom-nav button[data-view]").forEach(function(b){b.classList.toggle("active",b.getAttribute("data-view")===name);});
-    $("#notificationPanel").classList.remove("show");
-    window.scrollTo({top:0,behavior:"smooth"});
-    if(name==="profile") renderProfile();
-    if(name==="dm") renderChats();
-  }
-  $$("[data-view]").forEach(function(b){b.addEventListener("click",function(){showView(b.getAttribute("data-view"));});});
+q("#signupUsername").addEventListener("input",function(){this.value=this.value.toLowerCase().replace(/[^a-z0-9._]/g,"")});
 
-  var storyData = [
-    {u:"Sen",a:"https://i.pravatar.cc/160?img=12",img:"https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=900&q=85",mine:true},
-    {u:"selin",a:users[0].a,img:"https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=85"},
-    {u:"mert.jpg",a:users[1].a,img:"https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=900&q=85"},
-    {u:"deniz.wav",a:users[2].a,img:"https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=900&q=85"},
-    {u:"lina",a:users[3].a,img:"https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=900&q=85"},
-    {u:"arda.dev",a:users[4].a,img:"https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=85"},
-    {u:"ece",a:users[5].a,img:"https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=900&q=85"}
-  ];
-  function renderStories(){
-    $("#stories").innerHTML=storyData.map(function(s,i){
-      return '<div class="story" data-story="'+i+'"><div class="story-ring"><img src="'+s.a+'" alt=""><span class="'+(s.mine?"story-plus":"")+'">'+(s.mine?'<i class="fa-solid fa-plus"></i>':'')+'</span></div><div class="story-name">'+esc(s.u)+'</div></div>';
-    }).join("");
-    $$("[data-story]").forEach(function(el){el.onclick=function(){openStory(+el.getAttribute("data-story"));};});
-  }
-  var storyIndex=0;
-  function openStory(i){
-    storyIndex=i; renderStoryModal(); $("#storyModal").classList.add("show");
-  }
-  function renderStoryModal(){
-    var s=storyData[storyIndex], modal=$("#storyModal");
-    modal.innerHTML='<div class="story-card"><img class="story-bg" src="'+s.img+'" alt=""><div class="story-overlay"></div><div class="story-progress">'+storyData.map(function(x,i){return '<span class="'+(i<storyIndex?"done":i===storyIndex?"active":"")+'"></span>';}).join("")+'</div><div class="story-top"><img class="avatar" src="'+s.a+'" alt=""><b>'+esc(s.u)+'</b><span class="tiny">• şimdi</span><button class="story-close" id="storyClose"><i class="fa-solid fa-xmark"></i></button></div><div class="story-nav"><button id="storyPrev" aria-label="Önceki"></button><button id="storyNext" aria-label="Sonraki"></button></div><div class="story-reply"><input placeholder="Mesaj gönder..."><button class="icon-btn" style="border-color:rgba(255,255,255,.25);background:rgba(0,0,0,.28)"><i class="fa-regular fa-heart"></i></button></div></div>';
-    $("#storyClose").onclick=function(){modal.classList.remove("show");};
-    $("#storyPrev").onclick=function(){storyIndex=Math.max(0,storyIndex-1);renderStoryModal();};
-    $("#storyNext").onclick=function(){ if(storyIndex>=storyData.length-1){modal.classList.remove("show");}else{storyIndex++;renderStoryModal();} };
-    clearTimeout(window.__story); window.__story=setTimeout(function(){ if(modal.classList.contains("show")) $("#storyNext").click(); },5000);
-  }
+q("#signupForm").addEventListener("submit",async function(e){
+  e.preventDefault();q("#signupNote").textContent="";
+  var name=q("#signupName").value.trim(),username=q("#signupUsername").value.trim().toLowerCase();
+  var email=q("#signupEmail").value.trim(),password=q("#signupPassword").value;
+  if(!/^[a-z0-9._]{3,30}$/.test(username)){q("#signupNote").textContent="Kullanıcı adı 3-30 karakter ve yalnızca küçük harf, sayı, nokta veya alt çizgi olabilir.";return}
+  var chk=await db.from("instrix_profiles").select("id").ilike("username",username).limit(1);
+  if(chk.data&&chk.data.length){q("#signupNote").textContent="Bu kullanıcı adı alınmış.";return}
+  var btn=q("#signupBtn");setBusy(btn,true,"Instrix hesabı oluştur");
+  var res=await db.auth.signUp({email:email,password:password,options:{data:{app:"instrix",username:username,display_name:name}}});
+  setBusy(btn,false,"Instrix hesabı oluştur");
+  if(res.error){q("#signupNote").textContent=res.error.message;return}
+  if(res.data.session){session=res.data.session;user=res.data.user;await enterApp()}
+  else{q("#signupNote").style.color="#8ce6aa";q("#signupNote").textContent="Hesap oluşturuldu. E-posta doğrulaması açıksa gelen bağlantıyı onayla, sonra giriş yap."}
+});
 
-  function postCard(p){
-    var liked=!!state.liked[p.id], saved=!!state.saved[p.id];
-    var extra=(state.comments[p.id]||[]).length;
-    return '<article class="post" data-post="'+p.id+'"><div class="post-head"><img class="avatar" src="'+p.a+'" alt=""><div><div class="post-user">'+esc(p.u)+' '+((p.u==="selin"||p.u==="deniz.wav"||p.u==="ametrix")?'<i class="fa-solid fa-circle-check verified"></i>':'')+'</div><div class="post-meta">'+esc(p.loc||"")+'</div></div><button class="more"><i class="fa-solid fa-ellipsis"></i></button></div><div class="post-media" data-dbl="'+p.id+'"><img src="'+p.img+'" alt=""><div class="double-heart"><i class="fa-solid fa-heart"></i></div></div><div class="post-actions"><button class="like-btn '+(liked?"liked":"")+'" data-like="'+p.id+'"><i class="'+(liked?"fa-solid":"fa-regular")+' fa-heart"></i></button><button class="comment-btn" data-comments="'+p.id+'"><i class="fa-regular fa-comment"></i></button><button class="share-btn" data-share="'+p.id+'"><i class="fa-regular fa-paper-plane"></i></button><button class="save-btn '+(saved?"saved":"")+'" data-save="'+p.id+'"><i class="'+(saved?"fa-solid":"fa-regular")+' fa-bookmark"></i></button></div><div class="post-body"><div class="likes">'+fmt(p.likes+(liked?1:0))+' beğenme</div><div class="caption"><b>'+esc(p.u)+'</b>'+esc(p.cap)+'</div><div class="comments-link" data-comments="'+p.id+'>'+(p.comments.length+extra)+' yorumun tümünü gör</div><div class="time">2 saat önce</div></div></article>';
+async function ensureProfile(){
+  var r=await db.from("instrix_profiles").select("*").eq("id",user.id).maybeSingle();
+  if(r.data)return r.data;
+  var base=(user.email||"user").split("@")[0].toLowerCase().replace(/[^a-z0-9._]/g,"").slice(0,18);
+  if(base.length<3)base="user";
+  var name=(user.user_metadata&&user.user_metadata.display_name)||base;
+  var candidate=((user.user_metadata&&user.user_metadata.username)||base).toLowerCase().replace(/[^a-z0-9._]/g,"").slice(0,23);
+  var ins=await db.from("instrix_profiles").insert({id:user.id,username:candidate,display_name:name}).select().single();
+  if(ins.error){
+    candidate=base+"_"+user.id.replace(/-/g,"").slice(0,6);
+    ins=await db.from("instrix_profiles").insert({id:user.id,username:candidate,display_name:name}).select().single();
   }
-  function allPosts(){ return userPosts.concat(posts); }
-  function renderFeed(mode){
-    var arr = mode==="following" ? posts.filter(function(p){return p.u!=="arda.dev";}).concat(userPosts.slice(0,2)) : posts.concat(userPosts.slice(0,2));
-    $("#feed").innerHTML=arr.map(postCard).join("");
-    bindPostActions();
-  }
-  function findPost(id){ return allPosts().filter(function(p){return p.id===id;})[0] || posts[0]; }
-  function bindPostActions(){
-    $$("[data-like]").forEach(function(b){b.onclick=function(){var id=b.getAttribute("data-like");state.liked[id]=!state.liked[id];persist();renderFeed($(".pill.active").getAttribute("data-feed")); if($("#profileView").classList.contains("active"))renderProfile();};});
-    $$("[data-save]").forEach(function(b){b.onclick=function(){var id=b.getAttribute("data-save");state.saved[id]=!state.saved[id];persist();toast(state.saved[id]?"Kaydedildi":"Kaydedilenlerden çıkarıldı"); b.classList.toggle("saved",state.saved[id]); b.innerHTML='<i class="'+(state.saved[id]?"fa-solid":"fa-regular")+' fa-bookmark"></i>';};});
-    $$("[data-comments]").forEach(function(b){b.onclick=function(){openComments(b.getAttribute("data-comments"));};});
-    $$("[data-share]").forEach(function(b){b.onclick=function(){sharePost(b.getAttribute("data-share"));};});
-    $$("[data-dbl]").forEach(function(el){el.ondblclick=function(){var id=el.getAttribute("data-dbl");state.liked[id]=true;persist();var h=el.querySelector(".double-heart");h.classList.remove("pop");void h.offsetWidth;h.classList.add("pop");};});
-  }
+  if(ins.error)throw ins.error;
+  return ins.data;
+}
 
-  $$(".pill[data-feed]").forEach(function(b){b.onclick=function(){ $$(".pill[data-feed]").forEach(function(x){x.classList.remove("active");});b.classList.add("active");renderFeed(b.getAttribute("data-feed"));};});
+async function enterApp(){
+  if(!user){var s=await db.auth.getSession();session=s.data.session;user=session&&session.user}
+  if(!user)return showAuth();
+  try{me=await ensureProfile()}catch(err){toast("Profil yüklenemedi: "+err.message);return}
+  q("#authScreen").classList.add("hidden");q("#app").classList.remove("hidden");
+  syncMeUi();subscribeNotifications();await showView("home",false);
+}
 
-  function renderSuggestions(){
-    $("#suggestions").innerHTML=users.slice(0,5).map(function(u){
-      var f=!!state.followed[u.u];
-      return '<div class="suggestion"><img class="avatar" src="'+u.a+'" alt=""><div class="who"><b>'+esc(u.u)+(u.v?' <i class="fa-solid fa-circle-check verified"></i>':'')+'</b><span class="tiny">'+esc(u.n)+'</span></div><button class="follow-btn '+(f?"following":"")+'" data-follow="'+u.u+'">'+(f?"Takiptesin":"Takip et")+'</button></div>';
-    }).join("");
-    $$("[data-follow]").forEach(function(b){b.onclick=function(){var u=b.getAttribute("data-follow");state.followed[u]=!state.followed[u];persist();renderSuggestions();toast(state.followed[u]?"Takip ediliyor":"Takip bırakıldı");};});
+function showAuth(){q("#app").classList.add("hidden");q("#authScreen").classList.remove("hidden")}
+
+function syncMeUi(){q("#meMiniAvatar").src=avatar(me);q("#meMiniUser").textContent="@"+me.username}
+
+async function showView(name,scroll){
+  currentView=name;q("#topTitle").textContent=titleFor(name);
+  qa(".view").forEach(function(v){v.classList.remove("active")});var target=q("#"+name+"View");if(target)target.classList.add("active");
+  qa("[data-view]").forEach(function(b){b.classList.toggle("active",b.getAttribute("data-view")===name)});
+  if(scroll!==false)window.scrollTo({top:0,behavior:"smooth"});
+  if(name==="home")await Promise.all([loadStories(),loadFeed(),loadSuggestions()]);
+  if(name==="search")await renderSearch("");
+  if(name==="explore")await loadExplore();
+  if(name==="reels")await loadReels();
+  if(name==="dm")await loadConversations();
+  if(name==="notifications")await loadNotifications();
+  if(name==="profile"){profileId=profileId||user.id;await loadProfile(profileId,profileTab)}
+}
+
+qa("[data-view]").forEach(function(b){b.addEventListener("click",function(){var v=b.getAttribute("data-view");if(v==="profile")profileId=user.id;showView(v)})});
+q("#meMini").addEventListener("click",function(){profileId=user.id;showView("profile")});
+
+qa("[data-feed]").forEach(function(b){b.addEventListener("click",async function(){feedMode=b.getAttribute("data-feed");qa("[data-feed]").forEach(function(x){x.classList.toggle("active",x===b)});await loadFeed()})});
+
+async function getProfiles(ids){
+  ids=Array.from(new Set((ids||[]).filter(Boolean)));if(!ids.length)return{};
+  var missing=ids.filter(function(id){return!cache.profiles[id]});
+  if(missing.length){
+    var r=await db.from("instrix_profiles").select("*").in("id",missing);
+    (r.data||[]).forEach(function(p){cache.profiles[p.id]=p});
   }
+  var out={};ids.forEach(function(id){if(cache.profiles[id])out[id]=cache.profiles[id]});return out;
+}
 
-  var exploreImgs = [
-    "photo-1500530855697-b586d89ba3ee","photo-1519501025264-65ba15a82390","photo-1522202176988-66273c2fd55f","photo-1501386761578-eac5c94b800a","photo-1470229722913-7c0e2dbbafd3","photo-1515886657613-9f3515b0c78f","photo-1492684223066-81342ee5ff30","photo-1483985988355-763728e1935b","photo-1511379938547-c1f69419868d","photo-1497366811353-6870744d04b2","photo-1524650359799-842906ca1c06","photo-1524758631624-e2822e304c36","photo-1506157786151-b8491531f063","photo-1493225457124-a3eb161ffa5f","photo-1475275166152-f1e8005f9854","photo-1497366754035-f200968a6e72","photo-1487412720507-e7ab37603c6f","photo-1504198453319-5ce911bafcde"
-  ];
-  function renderExplore(){
-    exploreImgs.sort(function(){return Math.random()-.5;});
-    $("#exploreGrid").innerHTML=exploreImgs.map(function(id,i){var src="https://images.unsplash.com/"+id+"?auto=format&fit=crop&w=900&q=82";return '<div class="grid-item" data-preview="'+src+'"><img src="'+src+'" loading="lazy" alt=""><div class="grid-hover"><span><i class="fa-solid fa-heart"></i> '+fmt(700+i*383)+'</span><span><i class="fa-solid fa-comment"></i> '+(18+i*7)+'</span></div></div>';}).join("");
-    $$("[data-preview]").forEach(function(g){g.onclick=function(){openImagePreview(g.getAttribute("data-preview"));};});
+async function loadFeed(){
+  loading("#feed");
+  var allowed=null;
+  if(feedMode==="following"){
+    var f=await db.from("instrix_follows").select("following_id").eq("follower_id",user.id);
+    allowed=(f.data||[]).map(function(x){return x.following_id});allowed.push(user.id);
+    if(!allowed.length){empty("#feed","fa-regular fa-user","Henüz takip yok","Birilerini takip ettiğinde gönderileri burada görünür.");return}
   }
-  $("#refreshExplore").onclick=function(){renderExplore();toast("FYP yenilendi");};
+  var query=db.from("instrix_posts").select("*").order("created_at",{ascending:false}).limit(35);
+  if(allowed)query=query.in("user_id",allowed);
+  var r=await query;if(r.error){empty("#feed","fa-solid fa-triangle-exclamation","Akış yüklenemedi",r.error.message);return}
+  var posts=r.data||[];cache.posts=posts;
+  if(!posts.length){empty("#feed","fa-regular fa-images","Akış henüz boş","İlk gönderiyi sen paylaş veya başka hesapları takip et.");return}
+  var ids=posts.map(function(p){return p.id});var pmap=await getProfiles(posts.map(function(p){return p.user_id}));
+  var likes=await db.from("instrix_post_likes").select("post_id,user_id").in("post_id",ids);
+  var comments=await db.from("instrix_comments").select("id,post_id").in("post_id",ids);
+  var saved=await db.from("instrix_saved_posts").select("post_id").eq("user_id",user.id).in("post_id",ids);
+  var lc={},liked={},cc={},sv={};
+  (likes.data||[]).forEach(function(x){lc[x.post_id]=(lc[x.post_id]||0)+1;if(x.user_id===user.id)liked[x.post_id]=true});
+  (comments.data||[]).forEach(function(x){cc[x.post_id]=(cc[x.post_id]||0)+1});
+  (saved.data||[]).forEach(function(x){sv[x.post_id]=true});
+  cache.likes=liked;cache.commentsCount=cc;cache.saved=sv;
+  q("#feed").innerHTML=posts.map(function(p){return postHtml(p,pmap[p.user_id],lc[p.id]||0,cc[p.id]||0,liked[p.id],sv[p.id])}).join("");
+  bindPosts();
+}
 
-  var reelsData = [
-    {u:"ece",a:users[5].a,img:"https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=900&q=86",cap:"POV: şarkı sonunda tam istediğin gibi oldu.",likes:"18.4K"},
-    {u:"mert.jpg",a:users[1].a,img:"https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=86",cap:"city walk / 01:24",likes:"9.2K"},
-    {u:"selin",a:users[0].a,img:"https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=86",cap:"weekend reset 🌱",likes:"32.1K"}
-  ];
-  function renderReels(){
-    $("#reels").innerHTML=reelsData.map(function(r,i){return '<div class="reel"><img src="'+r.img+'" alt=""><div class="reel-shade"></div><div class="reel-info"><div class="reel-user"><img class="avatar" src="'+r.a+'" alt="">'+esc(r.u)+' <button class="secondary" style="padding:6px 10px;background:rgba(0,0,0,.25);color:white;border-color:rgba(255,255,255,.22)">Takip et</button></div><p>'+esc(r.cap)+'</p><div class="tiny" style="color:#ddd"><i class="fa-solid fa-music"></i> original audio · Instrix</div></div><div class="reel-actions"><div><button data-reel-like="'+i+'"><i class="fa-regular fa-heart"></i></button><div class="reel-count">'+r.likes+'</div></div><div><button><i class="fa-regular fa-comment"></i></button><div class="reel-count">'+(204+i*99)+'</div></div><div><button data-reel-share="'+i+'"><i class="fa-regular fa-paper-plane"></i></button></div><div><button><i class="fa-solid fa-ellipsis"></i></button></div></div></div>';}).join("");
-    $$("[data-reel-like]").forEach(function(b){b.onclick=function(){var i=b.querySelector("i");i.classList.toggle("fa-regular");i.classList.toggle("fa-solid");b.style.color=i.classList.contains("fa-solid")?"#ff3b6b":"";};});
-    $$("[data-reel-share]").forEach(function(b){b.onclick=function(){toast("Clip bağlantısı kopyalandı");};});
+function mediaHtml(p){
+  if(p.media_type==="video")return'<video src="'+safe(p.media_url)+'" controls playsinline preload="metadata"></video>';
+  return'<img src="'+safe(p.media_url)+'" alt="" loading="lazy">';
+}
+function postHtml(p,prof,likes,comments,liked,saved){
+  prof=prof||{id:p.user_id,username:"kullanici",display_name:"",avatar_url:null};
+  return'<article class="post" data-post="'+p.id+'">'+
+    '<div class="post-head"><img class="avatar" src="'+avatar(prof)+'" alt=""><div><div class="post-user" data-profile="'+prof.id+'>'+safe(prof.username)+(prof.is_verified?' <i class="fa-solid fa-circle-check verified"></i>':'')+'</div><div class="post-meta">'+safe(p.location||"")+'</div></div>'+
+    (p.user_id===user.id?'<button class="more" data-delete-post="'+p.id+'" title="Gönderiyi sil"><i class="fa-solid fa-ellipsis"></i></button>':'<button class="more"><i class="fa-solid fa-ellipsis"></i></button>')+'</div>'+
+    '<div class="post-media">'+mediaHtml(p)+'</div>'+
+    '<div class="post-actions"><button class="'+(liked?"liked":"")+'" data-like="'+p.id+'"><i class="'+(liked?"fa-solid":"fa-regular")+' fa-heart"></i></button><button data-comment="'+p.id+'"><i class="fa-regular fa-comment"></i></button><button data-share="'+p.id+'"><i class="fa-regular fa-paper-plane"></i></button><button class="save '+(saved?"saved":"")+'" data-save="'+p.id+'"><i class="'+(saved?"fa-solid":"fa-regular")+' fa-bookmark"></i></button></div>'+
+    '<div class="post-body"><div class="likes" data-like-count="'+p.id+'>'+fmt(likes)+' beğenme</div><div class="caption"><b>'+safe(prof.username)+'</b>'+safe(p.caption||"")+'</div><div class="comments-link" data-comment="'+p.id+'>'+comments+' yorumun tümünü gör</div><div class="time">'+ago(p.created_at)+'</div></div></article>'
+}
+
+function bindPosts(){
+  qa("[data-profile]").forEach(function(x){x.onclick=function(){profileId=x.getAttribute("data-profile");profileTab="posts";showView("profile")}});
+  qa("[data-like]").forEach(function(x){x.onclick=function(){toggleLike(x.getAttribute("data-like"),x)}});
+  qa("[data-save]").forEach(function(x){x.onclick=function(){toggleSave(x.getAttribute("data-save"),x)}});
+  qa("[data-comment]").forEach(function(x){x.onclick=function(){openComments(x.getAttribute("data-comment"))}});
+  qa("[data-share]").forEach(function(x){x.onclick=function(){sharePost(x.getAttribute("data-share"))}});
+  qa("[data-delete-post]").forEach(function(x){x.onclick=function(){deletePost(x.getAttribute("data-delete-post"))}});
+}
+
+async function toggleLike(postId,btn){
+  var on=!!cache.likes[postId];
+  if(on){var r=await db.from("instrix_post_likes").delete().eq("post_id",postId).eq("user_id",user.id);if(r.error)return toast(r.error.message);cache.likes[postId]=false}
+  else{var r2=await db.from("instrix_post_likes").insert({post_id:postId,user_id:user.id});if(r2.error)return toast(r2.error.message);cache.likes[postId]=true}
+  btn.classList.toggle("liked",!on);btn.innerHTML='<i class="'+(!on?"fa-solid":"fa-regular")+' fa-heart"></i>';
+  await loadFeed();
+}
+async function toggleSave(postId,btn){
+  var on=!!cache.saved[postId];
+  if(on){var r=await db.from("instrix_saved_posts").delete().eq("post_id",postId).eq("user_id",user.id);if(r.error)return toast(r.error.message);cache.saved[postId]=false;toast("Kaydedilenlerden çıkarıldı")}
+  else{var r2=await db.from("instrix_saved_posts").insert({post_id:postId,user_id:user.id});if(r2.error)return toast(r2.error.message);cache.saved[postId]=true;toast("Kaydedildi")}
+  btn.classList.toggle("saved",!on);btn.innerHTML='<i class="'+(!on?"fa-solid":"fa-regular")+' fa-bookmark"></i>';
+}
+async function sharePost(id){
+  var url=location.href.split("#")[0]+"#post-"+id;
+  if(navigator.share){try{await navigator.share({title:"Instrix",text:"Bu gönderiye bak",url:url})}catch(e){}}
+  else if(navigator.clipboard){await navigator.clipboard.writeText(url);toast("Bağlantı kopyalandı")}else toast("Paylaşım bağlantısı hazır")
+}
+async function deletePost(id){
+  if(!confirm("Bu gönderiyi silmek istiyor musun?"))return;
+  var r=await db.from("instrix_posts").delete().eq("id",id);if(r.error)return toast(r.error.message);toast("Gönderi silindi");if(currentView==="profile")await loadProfile(profileId,profileTab);else await loadFeed()
+}
+
+async function openComments(postId){
+  currentCommentPost=postId;openModal("commentsModal");await loadComments()
+}
+async function loadComments(){
+  loading("#commentsList");
+  var r=await db.from("instrix_comments").select("*").eq("post_id",currentCommentPost).order("created_at",{ascending:true});
+  if(r.error){empty("#commentsList","fa-solid fa-triangle-exclamation","Yorumlar yüklenemedi",r.error.message);return}
+  var arr=r.data||[],pmap=await getProfiles(arr.map(function(x){return x.user_id}));
+  if(!arr.length){empty("#commentsList","fa-regular fa-comment","Henüz yorum yok","İlk yorumu sen yap.");return}
+  q("#commentsList").innerHTML=arr.map(function(c){var p=pmap[c.user_id]||{};return'<div class="comment-row"><img class="avatar" src="'+avatar(p)+'" alt=""><div class="comment-copy"><div><b>'+safe(p.username||"kullanici")+'</b>'+safe(c.body)+'</div><div class="tiny">'+ago(c.created_at)+'</div></div></div>'}).join("")
+}
+q("#sendCommentBtn").onclick=async function(){
+  var body=q("#commentInput").value.trim();if(!body||!currentCommentPost)return;
+  var r=await db.from("instrix_comments").insert({post_id:currentCommentPost,user_id:user.id,body:body});if(r.error)return toast(r.error.message);
+  q("#commentInput").value="";await loadComments();cache.commentsCount[currentCommentPost]=(cache.commentsCount[currentCommentPost]||0)+1
+};
+q("#commentInput").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();q("#sendCommentBtn").click()}});
+
+async function loadStories(){
+  var r=await db.from("instrix_stories").select("*").order("created_at",{ascending:false}).limit(60);
+  var stories=r.data||[],pmap=await getProfiles(stories.map(function(s){return s.user_id}));
+  var byUser={};stories.forEach(function(s){if(!byUser[s.user_id])byUser[s.user_id]=[];byUser[s.user_id].push(s)});
+  var mine='<div class="story" id="addStoryQuick"><div class="story-ring"><img src="'+avatar(me)+'" alt=""><span class="story-add"><i class="fa-solid fa-plus"></i></span></div><div class="story-name">Hikâyen</div></div>';
+  var rest=Object.keys(byUser).filter(function(id){return id!==user.id}).map(function(id){var p=pmap[id]||{},s=byUser[id][0];return'<div class="story" data-story-user="'+id+'"><div class="story-ring"><img src="'+avatar(p)+'" alt=""></div><div class="story-name">'+safe(p.username||"kullanici")+'</div></div>'}).join("");
+  q("#stories").innerHTML=mine+rest;
+  q("#addStoryQuick").onclick=function(){composerType="story";openComposer("story")};
+  qa("[data-story-user]").forEach(function(x){x.onclick=function(){openStorySet(byUser[x.getAttribute("data-story-user")]||[],pmap[x.getAttribute("data-story-user")])}})
+}
+async function openStorySet(arr,prof){
+  if(!arr.length)return;var idx=0;openModal("storyModal");
+  async function render(){
+    var s=arr[idx];await db.from("instrix_story_views").upsert({story_id:s.id,viewer_id:user.id},{onConflict:"story_id,viewer_id"});
+    q("#storyModal").innerHTML='<div class="story-viewer">'+mediaHtml(s)+'<div class="story-overlay"></div><div class="story-top"><img class="avatar" src="'+avatar(prof)+'" alt=""><b>'+safe(prof.username||"kullanici")+'</b><span class="tiny" style="color:#ddd">'+ago(s.created_at)+'</span><button class="story-close" id="storyClose"><i class="fa-solid fa-xmark"></i></button></div><div class="story-reply"><input id="storyReply" placeholder="Mesaj gönder..."><button id="storyNext" class="icon-btn" style="background:rgba(0,0,0,.3);border-color:rgba(255,255,255,.25)"><i class="fa-solid fa-chevron-right"></i></button></div></div>';
+    q("#storyClose").onclick=function(){closeModal("storyModal")};
+    q("#storyNext").onclick=function(){if(idx<arr.length-1){idx++;render()}else closeModal("storyModal")};
+    q("#storyReply").addEventListener("keydown",async function(e){if(e.key==="Enter"){var t=this.value.trim();if(!t)return;var c=await startConversation(prof.id,false);if(c){await db.from("instrix_messages").insert({conversation_id:c.id,sender_id:user.id,body:t});toast("Hikâyeye cevap gönderildi");this.value=""}}})
   }
+  await render()
+}
 
-  var chats = [
-    {u:"selin",a:users[0].a,preview:"tamam sonra yazarsın ✨",online:true},
-    {u:"deniz.wav",a:users[2].a,preview:"mix'i dinledin mi?",online:true},
-    {u:"mert.jpg",a:users[1].a,preview:"fotoğrafları attım",online:false},
-    {u:"lina",a:users[3].a,preview:"HAHAH evet",online:false},
-    {u:"ece",a:users[5].a,preview:"yarın?",online:true}
-  ];
-  var activeChat="selin";
-  var seedMessages={
-    "selin":[{me:false,t:"bugün ne yapıyorsun?",time:"10:21"},{me:true,t:"biraz çalışıp sonra müzikle uğraşırım",time:"10:23"},{me:false,t:"tamam sonra yazarsın ✨",time:"10:24"}],
-    "deniz.wav":[{me:false,t:"yeni mix hazır",time:"Dün"},{me:false,t:"mix'i dinledin mi?",time:"Dün"}],
-    "mert.jpg":[{me:false,t:"fotoğrafları attım",time:"Pzt"}],
-    "lina":[{me:true,t:"bu cidden oldu mu 😭",time:"Paz"},{me:false,t:"HAHAH evet",time:"Paz"}],
-    "ece":[{me:false,t:"yarın?",time:"Cum"}]
-  };
-  function messagesFor(u){ return (seedMessages[u]||[]).concat(state.messages[u]||[]); }
-  function renderChats(){
-    $("#chatList").innerHTML=chats.map(function(c,i){return '<div class="chat-row '+(activeChat===c.u?"active":"")+'" data-chat="'+c.u+'"><img class="avatar" src="'+c.a+'" alt=""><div class="chat-copy"><b>'+c.u+'</b><div class="chat-preview">'+esc(c.preview)+'</div></div>'+(i<3?'<span class="unread"></span>':'')+'</div>';}).join("");
-    $$("[data-chat]").forEach(function(r){r.onclick=function(){activeChat=r.getAttribute("data-chat");$("#dmWrap").classList.add("chat-open");renderChats();renderActiveChat();};});
-    renderActiveChat();
+async function loadSuggestions(){
+  var p=await db.from("instrix_profiles").select("*").neq("id",user.id).order("created_at",{ascending:false}).limit(5);
+  var fl=await db.from("instrix_follows").select("following_id").eq("follower_id",user.id);
+  var set={};(fl.data||[]).forEach(function(x){set[x.following_id]=true});
+  if(!(p.data||[]).length){q("#suggestions").innerHTML='<div class="tiny" style="padding:10px 0">Henüz başka kullanıcı yok.</div>';return}
+  q("#suggestions").innerHTML=p.data.map(function(x){cache.profiles[x.id]=x;return'<div class="suggest-row"><img class="avatar" src="'+avatar(x)+'" alt=""><div class="row-copy"><b data-profile="'+x.id+'>'+safe(x.username)+'</b><span>'+safe(x.display_name)+'</span></div><button class="follow-btn '+(set[x.id]?"following":"")+'" data-follow="'+x.id+'">'+(set[x.id]?"Takiptesin":"Takip et")+'</button></div>'}).join("");
+  bindProfileLinksAndFollows()
+}
+function bindProfileLinksAndFollows(){
+  qa("[data-profile]").forEach(function(x){x.onclick=function(){profileId=x.getAttribute("data-profile");profileTab="posts";showView("profile")}});
+  qa("[data-follow]").forEach(function(x){x.onclick=function(){toggleFollow(x.getAttribute("data-follow"),x)}})
+}
+async function toggleFollow(other,btn){
+  var existing=await db.from("instrix_follows").select("following_id").eq("follower_id",user.id).eq("following_id",other).maybeSingle();
+  if(existing.data){var d=await db.from("instrix_follows").delete().eq("follower_id",user.id).eq("following_id",other);if(d.error)return toast(d.error.message);toast("Takip bırakıldı")}
+  else{var i=await db.from("instrix_follows").insert({follower_id:user.id,following_id:other});if(i.error)return toast(i.error.message);toast("Takip ediliyor")}
+  if(btn){var on=!existing.data;btn.textContent=on?"Takiptesin":"Takip et";btn.classList.toggle("following",on)}
+  if(currentView==="profile")await loadProfile(profileId,profileTab)
+}
+
+async function renderSearch(term){
+  var t=(term||"").trim();if(!t){var r=await db.from("instrix_profiles").select("*").neq("id",user.id).order("created_at",{ascending:false}).limit(20);return drawSearch(r.data||[])}
+  var a=await db.from("instrix_profiles").select("*").ilike("username","%"+t+"%").limit(20);
+  var b=await db.from("instrix_profiles").select("*").ilike("display_name","%"+t+"%").limit(20);
+  var map={};(a.data||[]).concat(b.data||[]).forEach(function(x){if(x.id!==user.id)map[x.id]=x});drawSearch(Object.keys(map).map(function(k){return map[k]}))
+}
+function drawSearch(arr){
+  arr.forEach(function(x){cache.profiles[x.id]=x});
+  if(!arr.length){empty("#searchResults","fa-solid fa-magnifying-glass","Sonuç bulunamadı","Başka bir kullanıcı adı dene.");return}
+  q("#searchResults").innerHTML=arr.map(function(x){return'<div class="person-row" data-profile="'+x.id+'"><img class="avatar" src="'+avatar(x)+'" alt=""><div class="row-copy"><b>'+safe(x.username)+(x.is_verified?' <i class="fa-solid fa-circle-check verified"></i>':'')+'</b><span>'+safe(x.display_name)+' · '+safe((x.bio||"").slice(0,70))+'</span></div><i class="fa-solid fa-chevron-right muted"></i></div>'}).join("");bindProfileLinksAndFollows()
+}
+q("#searchInput").addEventListener("input",function(){clearTimeout(window.__search);var v=this.value;window.__search=setTimeout(function(){renderSearch(v)},230)});
+q("#topSearch").addEventListener("keydown",function(e){if(e.key==="Enter"){showView("search");q("#searchInput").value=this.value;renderSearch(this.value)}});
+
+async function loadExplore(){
+  loading("#exploreGrid");
+  var r=await db.from("instrix_posts").select("*").order("created_at",{ascending:false}).limit(80);
+  var arr=(r.data||[]).sort(function(){return Math.random()-.5});
+  if(!arr.length){empty("#exploreGrid","fa-regular fa-compass","Keşfet henüz boş","Gönderiler paylaşıldıkça burada görünür.");return}
+  var likes=await db.from("instrix_post_likes").select("post_id").in("post_id",arr.map(function(x){return x.id}));
+  var lc={};(likes.data||[]).forEach(function(x){lc[x.post_id]=(lc[x.post_id]||0)+1});
+  q("#exploreGrid").innerHTML=arr.map(function(p){return'<div class="grid-item" data-open-post="'+p.id+'>'+mediaHtml(p)+'<div class="grid-hover"><span><i class="fa-solid fa-heart"></i> '+fmt(lc[p.id]||0)+'</span></div></div>'}).join("");
+  qa("[data-open-post]").forEach(function(x){x.onclick=function(){showView("home");setTimeout(function(){var el=q('[data-post="'+x.getAttribute("data-open-post")+'"]');if(el)el.scrollIntoView({behavior:"smooth",block:"center"})},350)}})
+}
+q("#refreshExplore").onclick=loadExplore;
+
+async function loadReels(){
+  loading("#reels");
+  var r=await db.from("instrix_posts").select("*").eq("media_type","video").order("created_at",{ascending:false}).limit(30);
+  var arr=r.data||[];if(!arr.length){empty("#reels","fa-solid fa-play","Henüz Clip yok","İlk videoyu paylaşmak için Oluştur'a dokun.");return}
+  var pmap=await getProfiles(arr.map(function(x){return x.user_id}));
+  q("#reels").innerHTML=arr.map(function(p){var pr=pmap[p.user_id]||{};return'<div class="reel"><video src="'+safe(p.media_url)+'" muted loop playsinline controls preload="metadata"></video><div class="reel-shade"></div><div class="reel-info"><b data-profile="'+pr.id+'">@'+safe(pr.username||"kullanici")+'</b><p>'+safe(p.caption||"")+'</p></div><div class="reel-actions"><button data-like="'+p.id+'"><i class="fa-regular fa-heart"></i></button><button data-comment="'+p.id+'"><i class="fa-regular fa-comment"></i></button><button data-share="'+p.id+'"><i class="fa-regular fa-paper-plane"></i></button></div></div>'}).join("");bindPosts()
+}
+
+async function loadProfile(id,tab){
+  profileId=id;profileTab=tab||"posts";loading("#profileHead");loading("#profileGrid");
+  var pr=await db.from("instrix_profiles").select("*").eq("id",id).single();if(pr.error){empty("#profileHead","fa-regular fa-user","Profil bulunamadı",pr.error.message);return}
+  var p=pr.data;cache.profiles[p.id]=p;
+  var counts=await Promise.all([
+    db.from("instrix_posts").select("*",{count:"exact",head:true}).eq("user_id",id),
+    db.from("instrix_follows").select("*",{count:"exact",head:true}).eq("following_id",id),
+    db.from("instrix_follows").select("*",{count:"exact",head:true}).eq("follower_id",id)
+  ]);
+  var own=id===user.id,following=false;
+  if(!own){var fl=await db.from("instrix_follows").select("following_id").eq("follower_id",user.id).eq("following_id",id).maybeSingle();following=!!fl.data}
+  q("#profileHead").innerHTML='<div class="profile-head"><img class="avatar-lg" src="'+avatar(p)+'" alt=""><div><div class="profile-top"><h2>'+safe(p.username)+(p.is_verified?' <i class="fa-solid fa-circle-check verified"></i>':'')+'</h2>'+
+  (own?'<button id="editProfileBtn" class="secondary">Profili düzenle</button>':'<button class="primary" data-follow="'+p.id+'>'+(following?"Takiptesin":"Takip et")+'</button><button class="secondary" data-message-user="'+p.id+'">Mesaj</button>')+
+  '</div><div class="stats"><span><b>'+fmt(counts[0].count||0)+'</b> gönderi</span><span><b>'+fmt(counts[1].count||0)+'</b> takipçi</span><span><b>'+fmt(counts[2].count||0)+'</b> takip</span></div><div class="bio"><b>'+safe(p.display_name||p.username)+'</b><br>'+safe(p.bio||"")+(p.website?'<br><a href="'+safe(p.website)+'" target="_blank" rel="noopener" style="color:#a994ff">'+safe(p.website)+'</a>':'')+'</div></div></div>';
+  q("#savedTab").classList.toggle("hidden",!own);
+  qa(".profile-tab").forEach(function(x){x.classList.toggle("active",x.getAttribute("data-profile-tab")===(tab||"posts"))});
+  if(q("#editProfileBtn"))q("#editProfileBtn").onclick=openEditProfile;
+  bindProfileLinksAndFollows();
+  qa("[data-message-user]").forEach(function(x){x.onclick=async function(){var c=await startConversation(x.getAttribute("data-message-user"),false);if(c){currentConversation=c.id;await showView("dm");await openConversation(c.id)}}});
+  var posts=[];
+  if(tab==="saved"&&own){
+    var sv=await db.from("instrix_saved_posts").select("post_id").eq("user_id",user.id).order("created_at",{ascending:false});
+    var ids=(sv.data||[]).map(function(x){return x.post_id});if(ids.length){var rr=await db.from("instrix_posts").select("*").in("id",ids);posts=rr.data||[]}
+  }else{var rr2=await db.from("instrix_posts").select("*").eq("user_id",id).order("created_at",{ascending:false});posts=rr2.data||[]}
+  if(!posts.length){empty("#profileGrid","fa-regular fa-images",tab==="saved"?"Kaydedilen yok":"Henüz gönderi yok",tab==="saved"?"Kaydettiğin gönderiler burada görünür.":"İlk gönderi paylaşıldığında burada görünür.");return}
+  q("#profileGrid").innerHTML=posts.map(function(x){return'<div class="grid-item" data-profile-post="'+x.id+'>'+mediaHtml(x)+'</div>'}).join("");
+  qa("[data-profile-post]").forEach(function(x){x.onclick=function(){showView("home");setTimeout(function(){var el=q('[data-post="'+x.getAttribute("data-profile-post")+'"]');if(el)el.scrollIntoView({behavior:"smooth",block:"center"})},350)}})
+}
+
+qa("[data-profile-tab]").forEach(function(x){x.onclick=function(){profileTab=x.getAttribute("data-profile-tab");loadProfile(profileId,profileTab)}});
+
+function openEditProfile(){
+  q("#editName").value=me.display_name||"";q("#editUsername").value=me.username||"";q("#editBio").value=me.bio||"";q("#editWebsite").value=me.website||"";q("#editAvatar").value="";openModal("editProfileModal")
+}
+q("#saveProfileBtn").onclick=async function(){
+  var btn=this;setBusy(btn,true,"Kaydet");
+  var avatarUrl=me.avatar_url,file=q("#editAvatar").files[0];
+  if(file){try{avatarUrl=await uploadMedia(file,"avatars")}catch(e){setBusy(btn,false,"Kaydet");return toast(e.message)}}
+  var username=q("#editUsername").value.trim().toLowerCase().replace(/[^a-z0-9._]/g,"");
+  var up=await db.from("instrix_profiles").update({display_name:q("#editName").value.trim(),username:username,bio:q("#editBio").value.trim(),website:q("#editWebsite").value.trim()||null,avatar_url:avatarUrl}).eq("id",user.id).select().single();
+  setBusy(btn,false,"Kaydet");if(up.error)return toast(up.error.message);me=up.data;cache.profiles[user.id]=me;syncMeUi();closeModal("editProfileModal");await loadProfile(user.id,"posts");toast("Profil güncellendi")
+};
+q("#logoutBtn").onclick=async function(){await db.auth.signOut();session=null;user=null;me=null;if(messageChannel)await db.removeChannel(messageChannel);if(notifChannel)await db.removeChannel(notifChannel);showAuth()};
+
+async function uploadMedia(file,folder){
+  if(!file)throw new Error("Bir medya dosyası seç.");
+  if(file.size>20*1024*1024)throw new Error("Dosya 20 MB'dan küçük olmalı.");
+  var ext=(file.name.split(".").pop()||"bin").toLowerCase().replace(/[^a-z0-9]/g,"");
+  var path=user.id+"/"+folder+"/"+crypto.randomUUID()+"."+ext;
+  var up=await db.storage.from("instrix-media").upload(path,file,{cacheControl:"3600",upsert:false,contentType:file.type});
+  if(up.error)throw up.error;
+  return db.storage.from("instrix-media").getPublicUrl(path).data.publicUrl
+}
+
+function openComposer(type){
+  composerType=type||"post";qa("[data-composer]").forEach(function(x){x.classList.toggle("active",x.getAttribute("data-composer")===composerType)});
+  q("#locationField").classList.toggle("hidden",composerType==="story");q("#mediaPreview").innerHTML='<span><i class="fa-regular fa-image"></i> Fotoğraf veya video seç</span>';q("#mediaFile").value="";q("#composerCaption").value="";q("#composerLocation").value="";openModal("composerModal")
+}
+q("#createSide").onclick=function(){openComposer("post")};q("#createMobile").onclick=function(){openComposer("post")};
+qa("[data-composer]").forEach(function(x){x.onclick=function(){composerType=x.getAttribute("data-composer");qa("[data-composer]").forEach(function(y){y.classList.toggle("active",y===x)});q("#locationField").classList.toggle("hidden",composerType==="story")}});
+q("#mediaFile").addEventListener("change",function(){
+  var f=this.files[0];if(!f)return;var url=URL.createObjectURL(f);q("#mediaPreview").innerHTML=f.type.indexOf("video")===0?'<video src="'+url+'" controls></video>':'<img src="'+url+'" alt="">'
+});
+q("#publishBtn").onclick=async function(){
+  var file=q("#mediaFile").files[0];if(!file)return toast("Önce fotoğraf veya video seç.");
+  var btn=this;setBusy(btn,true,"Paylaş");
+  try{
+    var url=await uploadMedia(file,composerType==="story"?"stories":"posts"),type=file.type.indexOf("video")===0?"video":"image";
+    if(composerType==="story"){
+      var s=await db.from("instrix_stories").insert({user_id:user.id,media_url:url,media_type:type,caption:q("#composerCaption").value.trim()});if(s.error)throw s.error
+    }else{
+      var p=await db.from("instrix_posts").insert({user_id:user.id,media_url:url,media_type:type,caption:q("#composerCaption").value.trim(),location:q("#composerLocation").value.trim()||null});if(p.error)throw p.error
+    }
+    closeModal("composerModal");toast(composerType==="story"?"Hikâyen yayınlandı":"Gönderin yayınlandı");if(composerType==="story")await loadStories();else await loadFeed()
+  }catch(e){toast(e.message||"Yükleme başarısız")}finally{setBusy(btn,false,"Paylaş")}
+};
+
+async function loadConversations(){
+  loading("#chatList");
+  var r=await db.from("instrix_conversations").select("*").or("user_a.eq."+user.id+",user_b.eq."+user.id).order("updated_at",{ascending:false});
+  var convs=r.data||[];if(!convs.length){empty("#chatList","fa-regular fa-paper-plane","Mesaj kutun boş","Yeni mesaj düğmesinden birini bulup konuşmaya başla.");q("#chatTop").innerHTML="";q("#chatMessages").innerHTML="";return}
+  var otherIds=convs.map(function(c){return c.user_a===user.id?c.user_b:c.user_a}),pmap=await getProfiles(otherIds);
+  var mr=await db.from("instrix_messages").select("*").in("conversation_id",convs.map(function(c){return c.id})).order("created_at",{ascending:false}).limit(200);
+  var last={};(mr.data||[]).forEach(function(m){if(!last[m.conversation_id])last[m.conversation_id]=m});
+  q("#chatList").innerHTML=convs.map(function(c){var oid=c.user_a===user.id?c.user_b:c.user_a,p=pmap[oid]||{},m=last[c.id];return'<div class="chat-row '+(currentConversation===c.id?"active":"")+'" data-conv="'+c.id+'"><img class="avatar" src="'+avatar(p)+'" alt=""><div class="row-copy"><b>'+safe(p.username||"kullanici")+'</b><span>'+safe(m?m.body:"Yeni konuşma")+'</span></div></div>'}).join("");
+  qa("[data-conv]").forEach(function(x){x.onclick=function(){openConversation(x.getAttribute("data-conv"))}});
+  if(currentConversation)await openConversation(currentConversation);else if(convs[0])await openConversation(convs[0].id)
+}
+async function openConversation(id){
+  currentConversation=id;q("#dmWrap").classList.add("chat-open");
+  var c=await db.from("instrix_conversations").select("*").eq("id",id).single();if(c.error)return;
+  var oid=c.data.user_a===user.id?c.data.user_b:c.data.user_a,p=(await getProfiles([oid]))[oid]||{};
+  q("#chatTop").innerHTML='<button id="chatBack" class="icon-btn chat-back" style="display:none;width:36px;height:36px"><i class="fa-solid fa-arrow-left"></i></button><img class="avatar" src="'+avatar(p)+'" alt=""><div><b data-profile="'+oid+'>'+safe(p.username||"kullanici")+'</b><div class="tiny">'+safe(p.display_name||"")+'</div></div>';
+  if(q("#chatBack"))q("#chatBack").onclick=function(){q("#dmWrap").classList.remove("chat-open")};bindProfileLinksAndFollows();
+  await loadMessages();
+  if(messageChannel)await db.removeChannel(messageChannel);
+  messageChannel=db.channel("instrix-chat-"+id).on("postgres_changes",{event:"INSERT",schema:"public",table:"instrix_messages",filter:"conversation_id=eq."+id},function(){loadMessages();loadConversations()}).subscribe()
+}
+async function loadMessages(){
+  if(!currentConversation)return;
+  var r=await db.from("instrix_messages").select("*").eq("conversation_id",currentConversation).order("created_at",{ascending:true}).limit(300);
+  if(r.error){empty("#chatMessages","fa-solid fa-triangle-exclamation","Mesajlar yüklenemedi",r.error.message);return}
+  q("#chatMessages").innerHTML=(r.data||[]).map(function(m){return'<div class="msg '+(m.sender_id===user.id?"me":"them")+'>'+safe(m.body)+(m.media_url?'<div><a href="'+safe(m.media_url)+'" target="_blank">Medya</a></div>':'')+'<div class="msg-time">'+ago(m.created_at)+'</div></div>'}).join("");
+  q("#chatMessages").scrollTop=q("#chatMessages").scrollHeight
+}
+async function sendMessage(){
+  var body=q("#messageInput").value.trim();if(!body||!currentConversation)return;
+  var r=await db.from("instrix_messages").insert({conversation_id:currentConversation,sender_id:user.id,body:body});if(r.error)return toast(r.error.message);q("#messageInput").value="";await loadMessages()
+}
+q("#sendMessageBtn").onclick=sendMessage;q("#messageInput").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage()}});
+
+q("#newDmBtn").onclick=function(){q("#dmSearchInput").value="";q("#dmSearchResults").innerHTML="";openModal("newDmModal");searchDm("")};
+q("#dmSearchInput").addEventListener("input",function(){searchDm(this.value)});
+async function searchDm(t){
+  var r=t.trim()?await db.from("instrix_profiles").select("*").ilike("username","%"+t.trim()+"%").neq("id",user.id).limit(25):await db.from("instrix_profiles").select("*").neq("id",user.id).limit(20);
+  var arr=r.data||[];if(!arr.length){empty("#dmSearchResults","fa-regular fa-user","Kullanıcı bulunamadı","Başka bir isim dene.");return}
+  q("#dmSearchResults").innerHTML=arr.map(function(p){cache.profiles[p.id]=p;return'<div class="person-row" data-start-dm="'+p.id+'"><img class="avatar" src="'+avatar(p)+'" alt=""><div class="row-copy"><b>'+safe(p.username)+'</b><span>'+safe(p.display_name)+'</span></div><i class="fa-regular fa-paper-plane"></i></div>'}).join("");
+  qa("[data-start-dm]").forEach(function(x){x.onclick=async function(){var c=await startConversation(x.getAttribute("data-start-dm"),false);if(c){closeModal("newDmModal");currentConversation=c.id;await loadConversations();await openConversation(c.id)}}})
+}
+async function startConversation(otherId,navigate){
+  if(otherId===user.id)return null;
+  var r=await db.from("instrix_conversations").select("*").or("and(user_a.eq."+user.id+",user_b.eq."+otherId+"),and(user_a.eq."+otherId+",user_b.eq."+user.id+")").maybeSingle();
+  if(r.data){if(navigate!==false){currentConversation=r.data.id;await showView("dm");await openConversation(r.data.id)}return r.data}
+  var ins=await db.from("instrix_conversations").insert({user_a:user.id,user_b:otherId}).select().single();
+  if(ins.error){
+    var retry=await db.from("instrix_conversations").select("*").or("and(user_a.eq."+user.id+",user_b.eq."+otherId+"),and(user_a.eq."+otherId+",user_b.eq."+user.id+")").maybeSingle();
+    if(retry.data)return retry.data;toast(ins.error.message);return null
   }
-  function renderActiveChat(){
-    var c=chats.filter(function(x){return x.u===activeChat;})[0]||chats[0];
-    $("#chatHead").innerHTML='<button class="icon-btn chat-back" id="chatBack" style="display:none;width:36px;height:36px"><i class="fa-solid fa-arrow-left"></i></button><img class="avatar" src="'+c.a+'" alt=""><div><b>'+c.u+'</b><div class="tiny">'+(c.online?"Şimdi aktif":"Bugün aktifti")+'</div></div><div style="margin-left:auto;display:flex;gap:6px"><button class="icon-btn" style="width:36px;height:36px"><i class="fa-solid fa-phone"></i></button><button class="icon-btn" style="width:36px;height:36px"><i class="fa-solid fa-video"></i></button></div>';
-    var msgs=messagesFor(activeChat);
-    $("#chatMessages").innerHTML=msgs.map(function(m){return '<div class="msg '+(m.me?"me":"them")+'">'+esc(m.t)+'<div class="msg-time">'+esc(m.time||"şimdi")+'</div></div>';}).join("");
-    $("#chatMessages").scrollTop=$("#chatMessages").scrollHeight;
-    var back=$("#chatBack"); if(back)back.onclick=function(){$("#dmWrap").classList.remove("chat-open");};
-  }
-  function sendMessage(){
-    var input=$("#messageInput"), text=input.value.trim(); if(!text)return;
-    if(!state.messages[activeChat])state.messages[activeChat]=[];
-    state.messages[activeChat].push({me:true,t:text,time:"şimdi"});input.value="";persist();renderActiveChat();
-    setTimeout(function(){ if(!state.messages[activeChat])state.messages[activeChat]=[]; state.messages[activeChat].push({me:false,t:"gördüm 👀",time:"şimdi"});persist();renderActiveChat(); },900);
-  }
-  $("#sendBtn").onclick=sendMessage;
-  $("#messageInput").addEventListener("keydown",function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}});
+  if(navigate!==false){currentConversation=ins.data.id;await showView("dm");await openConversation(ins.data.id)}return ins.data
+}
 
-  function renderProfile(tab){
-    tab=tab||($(".profile-tab.active")?$(".profile-tab.active").getAttribute("data-profile-tab"):"posts");
-    $("#profileUsername").textContent=state.profile.username;
-    $("#profileName").textContent=state.profile.name;
-    $("#profileBio").innerHTML=esc(state.profile.bio).replace(/\\n/g,"<br>");
-    $("#postCount").textContent=userPosts.length;
-    var arr=tab==="saved"?allPosts().filter(function(p){return state.saved[p.id];}):tab==="tagged"?posts.slice(2,6):userPosts;
-    if(!arr.length){$("#profileGrid").innerHTML='<div class="empty" style="grid-column:1/-1"><i class="fa-regular fa-bookmark"></i><div>Burada henüz bir şey yok.</div></div>';return;}
-    $("#profileGrid").innerHTML=arr.map(function(p){return '<div class="grid-item" data-preview="'+p.img+'"><img src="'+p.img+'" alt=""><div class="grid-hover"><span><i class="fa-solid fa-heart"></i> '+fmt(p.likes+(state.liked[p.id]?1:0))+'</span><span><i class="fa-solid fa-comment"></i> '+((p.comments||[]).length+(state.comments[p.id]||[]).length)+'</span></div></div>';}).join("");
-    $$("[data-preview]").forEach(function(g){g.onclick=function(){openImagePreview(g.getAttribute("data-preview"));};});
-  }
-  $$(".profile-tab").forEach(function(t){t.onclick=function(){$$(".profile-tab").forEach(function(x){x.classList.remove("active");});t.classList.add("active");renderProfile(t.getAttribute("data-profile-tab"));};});
+async function loadNotifications(){
+  loading("#notificationsList");
+  var r=await db.from("instrix_notifications").select("*").eq("recipient_id",user.id).order("created_at",{ascending:false}).limit(100);
+  var arr=r.data||[],pmap=await getProfiles(arr.map(function(n){return n.actor_id}));
+  if(!arr.length){empty("#notificationsList","fa-regular fa-heart","Henüz bildirim yok","Beğeni, yorum, takip ve mesaj bildirimleri burada görünür.");updateNotifBadge(0);return}
+  q("#notificationsList").innerHTML=arr.map(function(n){var p=pmap[n.actor_id]||{},txt=n.kind==="like"?"gönderini beğendi.":n.kind==="comment"?"yorum yaptı: "+(n.text||""):n.kind==="follow"?"seni takip etmeye başladı.":"sana mesaj gönderdi: "+(n.text||"");return'<div class="notif-row '+(!n.is_read?"unread":"")+'"><img class="avatar" src="'+avatar(p)+'" alt=""><div class="row-copy"><div><b data-profile="'+(p.id||"")+'>'+safe(p.username||"Instrix")+'</b> '+safe(txt)+'</div><span>'+ago(n.created_at)+'</span></div></div>'}).join("");
+  bindProfileLinksAndFollows();updateNotifBadge(arr.filter(function(n){return!n.is_read}).length)
+}
+q("#markReadBtn").onclick=async function(){await db.from("instrix_notifications").update({is_read:true}).eq("recipient_id",user.id).eq("is_read",false);await loadNotifications();toast("Bildirimler okundu")};
+function updateNotifBadge(n){var b=q("#notifBadge");b.textContent=String(n);b.classList.toggle("hidden",!n)}
+async function subscribeNotifications(){
+  var cnt=await db.from("instrix_notifications").select("*",{count:"exact",head:true}).eq("recipient_id",user.id).eq("is_read",false);updateNotifBadge(cnt.count||0);
+  if(notifChannel)await db.removeChannel(notifChannel);
+  notifChannel=db.channel("instrix-notif-"+user.id).on("postgres_changes",{event:"INSERT",schema:"public",table:"instrix_notifications",filter:"recipient_id=eq."+user.id},function(){db.from("instrix_notifications").select("*",{count:"exact",head:true}).eq("recipient_id",user.id).eq("is_read",false).then(function(x){updateNotifBadge(x.count||0)});if(currentView==="notifications")loadNotifications()}).subscribe()
+}
 
-  function renderSearch(q){
-    q=(q||"").toLowerCase().trim();
-    var all=[{u:state.profile.username,n:state.profile.name,a:"https://i.pravatar.cc/160?img=12",bio:state.profile.bio,v:true}].concat(users);
-    var res=all.filter(function(x){return !q||x.u.toLowerCase().indexOf(q)>-1||x.n.toLowerCase().indexOf(q)>-1||x.bio.toLowerCase().indexOf(q)>-1;});
-    $("#searchResults").innerHTML=res.map(function(u){return '<div class="person-card"><img class="avatar" src="'+u.a+'" alt=""><div class="who"><b>'+esc(u.u)+(u.v?' <i class="fa-solid fa-circle-check verified"></i>':'')+'</b><span>'+esc(u.n)+' · '+esc(u.bio).slice(0,55)+'</span></div><button class="secondary">'+(u.u===state.profile.username?"Profil":"Görüntüle")+'</button></div>';}).join("");
-  }
-  $("#bigSearch").addEventListener("input",function(){renderSearch(this.value);});
-  $("#topSearch").addEventListener("keydown",function(e){if(e.key==="Enter"){showView("search");$("#bigSearch").value=this.value;renderSearch(this.value);$("#bigSearch").focus();}});
+qa("[data-close]").forEach(function(b){b.onclick=function(){closeModal(b.getAttribute("data-close"))}});
+qa(".modal").forEach(function(m){m.addEventListener("click",function(e){if(e.target===m)m.classList.remove("show")})});
+document.addEventListener("keydown",function(e){if(e.key==="Escape")qa(".modal.show").forEach(function(m){m.classList.remove("show")})});
 
-  var notifData=[
-    {u:"selin",a:users[0].a,t:"gönderini beğendi.",time:"2 dk",thumb:userPosts[0].img},
-    {u:"deniz.wav",a:users[2].a,t:"seni takip etmeye başladı.",time:"18 dk"},
-    {u:"mert.jpg",a:users[1].a,t:"yorum yaptı: “this is so good”",time:"1 sa",thumb:userPosts[1].img},
-    {u:"ece",a:users[5].a,t:"hikayeni beğendi.",time:"3 sa"}
-  ];
-  function renderNotifications(){
-    $("#notifications").innerHTML=notifData.map(function(n){return '<div class="notif"><img class="avatar" src="'+n.a+'" alt=""><div class="notif-copy"><b>'+esc(n.u)+'</b> '+esc(n.t)+'<div class="notif-time">'+n.time+'</div></div>'+(n.thumb?'<img class="thumb" src="'+n.thumb+'" alt="">':'<button class="follow-btn">Takip et</button>')+'</div>';}).join("");
-  }
-  function toggleNotifications(){$("#notificationPanel").classList.toggle("show");}
-  $("#notifBtn").onclick=toggleNotifications;$("#notifSide").onclick=toggleNotifications;
+db.auth.onAuthStateChange(function(event,newSession){
+  session=newSession;user=newSession&&newSession.user;
+  if(event==="SIGNED_OUT")showAuth();
+  if((event==="SIGNED_IN"||event==="TOKEN_REFRESHED")&&user&&q("#app").classList.contains("hidden"))setTimeout(function(){enterApp()},0)
+});
 
-  function openModal(id){$("#"+id).classList.add("show");}
-  function closeModal(id){$("#"+id).classList.remove("show");}
-  $$("[data-close]").forEach(function(b){b.onclick=function(){closeModal(b.getAttribute("data-close"));};});
-  $$(".modal").forEach(function(m){m.addEventListener("click",function(e){if(e.target===m)m.classList.remove("show");});});
-  $("#createSide").onclick=function(){openModal("createModal");};
-  $("#createMobile").onclick=function(){openModal("createModal");};
-  $("#editProfileBtn").onclick=function(){
-    $("#editName").value=state.profile.name;$("#editUsername").value=state.profile.username;$("#editBio").value=state.profile.bio;openModal("editProfileModal");
-  };
-
-  var postImageData="";
-  $("#postFile").addEventListener("change",function(){
-    var f=this.files&&this.files[0]; if(!f)return;
-    var r=new FileReader(); r.onload=function(){postImageData=r.result;$("#postPreview").innerHTML='<img src="'+postImageData+'" alt="">';};r.readAsDataURL(f);
-  });
-  $("#postUrl").addEventListener("input",function(){var u=this.value.trim();if(u)$("#postPreview").innerHTML='<img src="'+esc(u)+'" alt="">';});
-  $("#sharePostBtn").onclick=function(){
-    var img=postImageData||$("#postUrl").value.trim(); if(!img){toast("Önce bir fotoğraf seç");return;}
-    var cap=$("#postCaption").value.trim()||"new post ✦";
-    userPosts.unshift({id:"local-"+Date.now(),u:state.profile.username,a:"https://i.pravatar.cc/160?img=12",img:img,cap:cap,loc:$("#postLocation").value.trim(),likes:0,comments:[]});
-    persist(); closeModal("createModal"); $("#postCaption").value="";$("#postLocation").value="";$("#postUrl").value="";$("#postFile").value="";postImageData="";$("#postPreview").innerHTML='<span><i class="fa-regular fa-image"></i> Fotoğraf önizlemesi</span>';renderProfile();showView("profile");toast("Gönderin paylaşıldı");
-  };
-  $("#saveProfileBtn").onclick=function(){
-    state.profile.name=$("#editName").value.trim()||"Ametrix";state.profile.username=$("#editUsername").value.trim().replace(/\\s+/g,".")||"ametrix";state.profile.bio=$("#editBio").value.trim();persist();closeModal("editProfileModal");renderProfile();toast("Profil güncellendi");
-  };
-
-  var currentCommentPost=null;
-  function openComments(id){
-    currentCommentPost=id;var p=findPost(id);var arr=(p.comments||[]).concat(state.comments[id]||[]);
-    $("#commentList").innerHTML=arr.map(function(c,i){var a=i%2?users[1].a:users[3].a;return '<div class="suggestion"><img class="avatar" src="'+a+'" alt=""><div class="who"><b>'+(i%2?"mert.jpg":"lina")+'</b><span style="display:block;font-size:13px;margin-top:3px">'+esc(c)+'</span></div><button class="follow-btn"><i class="fa-regular fa-heart"></i></button></div>';}).join("") || '<div class="empty">İlk yorumu sen yap.</div>';
-    openModal("commentsModal");
-  }
-  $("#sendCommentBtn").onclick=function(){var t=$("#commentInput").value.trim();if(!t||!currentCommentPost)return;if(!state.comments[currentCommentPost])state.comments[currentCommentPost]=[];state.comments[currentCommentPost].push(t);$("#commentInput").value="";persist();openComments(currentCommentPost);};
-  $("#commentInput").addEventListener("keydown",function(e){if(e.key==="Enter")$("#sendCommentBtn").click();});
-
-  function sharePost(id){
-    var url=location.href.split("#")[0]+"#post-"+id;
-    if(navigator.share){navigator.share({title:"Instrix",text:"Bu gönderiye bak",url:url}).catch(function(){});}
-    else if(navigator.clipboard){navigator.clipboard.writeText(url);toast("Bağlantı kopyalandı");}
-    else toast("Paylaşım bağlantısı hazır");
-  }
-  function openImagePreview(src){
-    var m=$("#storyModal");m.innerHTML='<div class="story-card" style="height:min(720px,86vh);background:#111"><img class="story-bg" src="'+src+'" alt=""><button class="story-close" id="previewClose" style="position:absolute;top:14px;right:14px"><i class="fa-solid fa-xmark"></i></button></div>';m.classList.add("show");$("#previewClose").onclick=function(){m.classList.remove("show");};
-  }
-
-  $("#themeBtn").onclick=function(){toast("Instrix şu an gece temasında");};
-  document.addEventListener("keydown",function(e){if(e.key==="Escape"){$$(".modal.show").forEach(function(m){m.classList.remove("show");});$("#notificationPanel").classList.remove("show");}});
-  document.addEventListener("click",function(e){if(!e.target.closest("#notificationPanel")&&!e.target.closest("#notifBtn")&&!e.target.closest("#notifSide"))$("#notificationPanel").classList.remove("show");});
-
-  renderStories();renderFeed("forYou");renderSuggestions();renderExplore();renderReels();renderChats();renderProfile();renderSearch("");renderNotifications();
+(async function boot(){
+  var s=await db.auth.getSession();session=s.data.session;user=session&&session.user;
+  if(user)await enterApp();else showAuth()
+})();
 })();
 </script>
 </body>
